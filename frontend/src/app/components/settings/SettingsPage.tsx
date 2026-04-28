@@ -1,23 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { GuardianContactHub } from "./GuardianContactHub";
-import { MedicalVerificationPortal } from "./MedicalVerificationPortal";
-import { CompanionSoulSettings } from "./CompanionSoulSettings";
 import { PatientNumberSettings } from "./PatientNumberSettings";
-import { SafetyDashboardPanel } from "./SafetyDashboardPanel";
-import { SystemStatusPanel } from "./SystemStatusPanel";
+import { GuardianCallerPanel } from "./GuardianCallerPanel";
+import {
+  PhoneIcon,
+  MobileIcon,
+  CallerIcon
+} from "./SketchIcons";
 import { api } from "../../lib/api";
 import type { UserProfile } from "../../lib/api";
 
-type Tab = "contacts" | "patient" | "medical" | "soul" | "safety" | "status";
+type Tab = "contacts" | "patient" | "caller";
 
-const PILLARS: { id: Tab; label: string; icon: string }[] = [
-  { id: "contacts", label: "Guardian Contacts", icon: "📞" },
-  { id: "patient", label: "Patient Number", icon: "📱" },
-  { id: "medical", label: "Medical Verification", icon: "💊" },
-  { id: "soul", label: "Companion Soul", icon: "✨" },
-  { id: "safety", label: "Safety & Precaution", icon: "🛡️" },
-  { id: "status", label: "System Status", icon: "⚡" },
+const PILLARS: { id: Tab; label: string; Icon: React.ComponentType }[] = [
+  { id: "contacts", label: "Guardian Contacts", Icon: PhoneIcon },
+  { id: "patient", label: "Patient Number", Icon: MobileIcon },
+  { id: "caller", label: "Guardian Caller", Icon: CallerIcon },
 ];
 
 export function SettingsPage() {
@@ -41,7 +40,7 @@ export function SettingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleContactSave = async (contacts: Array<{name:string;phone:string}>) => {
+  const handleContactSave = async (contacts: Array<{ name: string; phone: string }>) => {
     await api.updateSettings({ contacts });
     if (profile) setProfile({ ...profile, guardianContacts: contacts });
   };
@@ -51,22 +50,12 @@ export function SettingsPage() {
     if (profile) setProfile({ ...profile, patientNumber: result.patientNumber });
   };
 
-  const handleMedicalSave = async () => {
-    // Medical verification forms saved to API
-  };
-
-  const handleSoulSave = async (tone: any, language: any, interests: string[]) => {
-    await api.updateSettings({ personality: tone, language });
-    await api.updateMemory({ interests });
-    if (profile) setProfile({ ...profile, companionTone: tone, companionLanguage: language, interests });
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F5F1EA] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[#E85D2A]/20 border-t-[#E85D2A] rounded-full animate-spin" />
-          <p className="text-[#83311A] font-bold tracking-widest uppercase">Loading Configuration...</p>
+          <p className="text-[#83311A] font-bold tracking-widest uppercase font-sketch">Loading Configuration...</p>
         </div>
       </div>
     );
@@ -75,41 +64,41 @@ export function SettingsPage() {
   return (
     <div className="min-h-screen bg-[#F5F1EA] flex flex-col font-sans">
       {/* Global Header */}
-      <header className="bg-white border-b border-[#83311A]/10 sticky top-0 z-50 shadow-sm flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link to="/dashboard" className="w-10 h-10 rounded-full bg-[#F5F1EA] flex items-center justify-center text-[#83311A] hover:bg-[#E85D2A] hover:text-white transition-all transform hover:-translate-y-0.5" aria-label="Back to Dashboard">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+      <header className="bg-transparent sticky top-0 z-50 flex-shrink-0">
+        <div className="w-full px-0 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="w-8 h-8 sketch-box flex items-center justify-center text-[#83311A] hover:bg-[#D94F2B] hover:text-white transition-all transform hover:-translate-y-0.5" aria-label="Back to Dashboard">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </Link>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-[#83311A]">SAYA.AI SETTINGS</h1>
-              <p className="text-xs text-[#83311A]/60 font-bold uppercase tracking-widest">SAYA.AI Control Center</p>
-            </div>
+            <h1 className="text-xl font-sketch font-bold text-[#D94F2B] relative -top-1.5">SAYA.AI SETTINGS</h1>
           </div>
-          <div className="w-12 h-12 bg-[#F5F1EA] rounded-xl flex items-center justify-center text-[#83311A] text-xl shadow-sm">
+          <div className="w-10 h-10 bg-[#F5F1EA] sketch-box text-[#D94F2B] flex items-center justify-center text-lg">
             ⚙️
           </div>
         </div>
+        <div className="h-[1.5px] bg-black/20 sketch-underline w-full opacity-50"></div>
       </header>
 
       {/* Main Layout Area */}
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row">
-        
+
         {/* Left Sidebar */}
-        <aside className="w-full md:w-72 flex-shrink-0 p-6 md:border-r border-[#83311A]/10 bg-white md:bg-transparent md:min-h-[calc(100vh-80px-60px)]">
-          <nav className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 hide-scrollbar">
-            {PILLARS.map(tab => (
+        <aside className="w-full md:w-72 flex-shrink-0 pt-12 p-6 bg-transparent md:min-h-[calc(100vh-80px-60px)]">
+          <nav className="flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-visible pb-2 md:pb-0 hide-scrollbar">
+            {PILLARS.map((tab, idx) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-4 py-4 rounded-xl text-left transition-all whitespace-nowrap md:whitespace-normal w-full flex-shrink-0 md:flex-shrink-1 ${
-                  activeTab === tab.id 
-                  ? "bg-[#E85D2A] text-white shadow-md transform md:-translate-x-2" 
-                  : "bg-white md:bg-[#F5F1EA]/60 text-[#83311A] hover:bg-white hover:shadow-sm"
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 transition-all whitespace-nowrap md:whitespace-normal w-full flex-shrink-0 md:flex-shrink-1 font-sketch text-[1rem] ${activeTab === tab.id
+                    ? "bg-white text-black sketch-box shadow-md font-bold"
+                    : "bg-transparent text-[#83311A] hover:underline hover:decoration-wavy hover:decoration-[#D94F2B]"
+                  }`}
+                style={activeTab === tab.id ? {
+                  transform: `rotate(${idx % 2 === 0 ? -0.5 : 0.5}deg)`
+                } : {}}
               >
-                <span className="text-2xl">{tab.icon}</span>
-                <span className="text-sm font-bold uppercase tracking-wider">{tab.label}</span>
+                <tab.Icon />
+                <span className="font-bold uppercase tracking-wider">{tab.label}</span>
               </button>
             ))}
           </nav>
@@ -123,28 +112,19 @@ export function SettingsPage() {
           {activeTab === "patient" && (
             <PatientNumberSettings patientNumber={profile?.patientNumber ?? null} onSave={handlePatientNumberSave} />
           )}
-          {activeTab === "medical" && (
-            <MedicalVerificationPortal onSave={handleMedicalSave} />
-          )}
-          {activeTab === "soul" && (
-            <CompanionSoulSettings profile={profile} onSave={handleSoulSave} />
-          )}
-          {activeTab === "safety" && (
-            <SafetyDashboardPanel />
-          )}
-          {activeTab === "status" && (
-            <SystemStatusPanel />
+          {activeTab === "caller" && (
+            <GuardianCallerPanel />
           )}
         </main>
       </div>
 
       {/* Persistent Footer */}
-      <footer className="bg-white border-t border-[#83311A]/10 py-5 flex-shrink-0 mt-auto fixed bottom-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-[#83311A]/60 font-bold uppercase tracking-widest">
+      <footer className="bg-transparent py-5 flex-shrink-0 mt-auto fixed bottom-0 left-0 right-0 z-50">
+        <div className="w-full px-4 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-2">
+          <p className="text-[10px] text-[#83311A]/60 font-sketch uppercase tracking-widest">
             Your data is secure and globally encrypted.
           </p>
-          <p className="text-xs text-[#83311A]/40 font-bold">
+          <p className="text-[10px] text-[#83311A]/40 font-sketch">
             SAYA.AI © 2026
           </p>
         </div>
@@ -152,4 +132,3 @@ export function SettingsPage() {
     </div>
   );
 }
-

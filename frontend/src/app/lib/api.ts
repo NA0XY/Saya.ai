@@ -9,6 +9,7 @@ export type UserProfile = {
   companionTone?: "warm" | "formal" | "playful" | null;
   companionLanguage?: "english" | "hindi" | null;
   interests?: string[];
+  patientNumber?: string;
 };
 
 export type SettingsPayload = {
@@ -433,6 +434,12 @@ export const api = {
   async getCompanionNews(): Promise<NewsItem[]> {
     const result = await companionRequest<NewsItem[] | ApiEnvelope<NewsItem[]>>("/companion/news");
     return unwrapData(result);
-  }
+  },
+
+  updatePatientNumber: (payload: { patientNumber: string }) =>
+    request<{ patientNumber: string; status: string }>("/user/patient-number", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
 };
 
