@@ -1,26 +1,36 @@
 import { Mic, Loader2 } from "lucide-react";
 
-type VoiceState = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
-type InputLanguage = "en" | "hi";
+type VoiceState =
+  | "idle"
+  | "listening"
+  | "finalizing"
+  | "transcribing"
+  | "thinking"
+  | "speaking"
+  | "auto_relisten";
 
 type VoiceButtonProps = {
   state: VoiceState;
-  language: InputLanguage;
   onClick: () => void;
-  onLanguageChange: (language: InputLanguage) => void;
 };
 
-export function VoiceButton({ state, language, onClick, onLanguageChange }: VoiceButtonProps) {
-  const isProcessing = state === "transcribing" || state === "thinking" || state === "speaking";
+export function VoiceButton({ state, onClick }: VoiceButtonProps) {
+  const isProcessing =
+    state === "finalizing" || state === "transcribing" || state === "thinking" || state === "speaking" || state === "auto_relisten";
+  const canToggleListening = state === "idle" || state === "listening";
   const stateLabel =
     state === "idle"
       ? "Speak"
       : state === "listening"
       ? "Listening"
+      : state === "finalizing"
+      ? "Finalizing"
       : state === "transcribing"
       ? "Transcribing"
       : state === "thinking"
       ? "Thinking"
+      : state === "auto_relisten"
+      ? "Restarting"
       : "Speaking";
 
   // Waveform bars on the left and right
@@ -47,22 +57,19 @@ export function VoiceButton({ state, language, onClick, onLanguageChange }: Voic
 
   return (
     <div className="flex flex-col items-center justify-center gap-4">
-      <button
-        type="button"
-        aria-label={`Switch voice input language. Current ${language === "en" ? "English" : "Hindi"}`}
-        onClick={() => onLanguageChange(language === "en" ? "hi" : "en")}
-        className="rounded-full border border-[#E85D2A]/30 bg-white px-4 py-2 text-sm font-bold tracking-wider uppercase text-[#83311A] hover:bg-[#F5F1EA] transition-all duration-300"
-      >
-        {language === "en" ? "EN / हिं" : "हिं / EN"}
-      </button>
-
       <div className="flex items-center justify-center">
       {renderWaveform("left")}
       
       <button
         onClick={onClick}
-        aria-label={state === "idle" ? "Start voice input" : `${stateLabel} in progress`}
-        disabled={state !== "idle"}
+        aria-label={
+          state === "idle"
+            ? "Start voice input"
+            : state === "listening"
+            ? "Stop voice input"
+            : `${stateLabel} in progress`
+        }
+        disabled={!canToggleListening}
         className={`relative w-32 h-32 rounded-full transition-all duration-300 flex items-center justify-center z-10
           ${
             state === "idle"
@@ -70,7 +77,7 @@ export function VoiceButton({ state, language, onClick, onLanguageChange }: Voic
               : state === "listening"
               ? "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] scale-105 shadow-[0_0_40px_rgba(232,93,42,0.6),inset_0_4px_10px_rgba(255,255,255,0.5),inset_0_-4px_10px_rgba(0,0,0,0.15)]"
               : "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] opacity-85 shadow-none"
-          } disabled:cursor-not-allowed`}
+          } disabled:cursor-not-allowed disabled:opacity-80`}
       >
         {state === "idle" && (
           <div className="flex flex-col items-center gap-2">

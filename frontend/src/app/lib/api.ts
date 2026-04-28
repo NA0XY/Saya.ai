@@ -56,8 +56,11 @@ export type CompanionChatResponse = {
 export type CompanionSttResponse = {
   transcript: string;
   language: "hi" | "en";
-  provider: "groq-whisper";
-  duration_ms: number;
+  engine: "groq-whisper" | "local-faster-whisper";
+  stt_ms: number;
+  audio_ms?: number;
+  confidence_proxy: number;
+  quality_score: number;
 };
 
 export type CompanionTtsRequest = {
@@ -293,10 +296,18 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  transcribeCompanionAudio: async (patientId: string, audio: Blob, language: "hi" | "en") => {
+  transcribeCompanionAudio: async (
+    patientId: string,
+    audio: Blob,
+    language: "hi" | "en",
+    captureMs?: number
+  ) => {
     const body = new FormData();
     body.append("audio", audio, "utterance.webm");
     body.append("language", language);
+    if (typeof captureMs === "number" && Number.isFinite(captureMs)) {
+      body.append("capture_ms", String(Math.max(0, Math.round(captureMs))));
+    }
     const result = await companionRequest<CompanionSttResponse | ApiEnvelope<CompanionSttResponse>>(
       `/companion/stt/${patientId}`,
       { method: "POST", body }

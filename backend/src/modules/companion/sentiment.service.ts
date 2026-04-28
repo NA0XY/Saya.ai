@@ -9,6 +9,7 @@ import { alertService } from '../alerts/alert.service';
 import { patientRepository } from '../patients/patient.repository';
 import { smsService } from '../calls/sms.service';
 import { buildSentimentPrompt, SENTIMENT_JSON_SCHEMA } from './companion.prompts';
+import { logger } from '../../config/logger';
 
 const groq = new Groq({ apiKey: env.GROQ_API_KEY });
 const allowed: SentimentTag[] = ['joy', 'neutral', 'anxiety', 'sadness'];
@@ -23,23 +24,36 @@ export function shouldEscalateForConsecutiveNegativeSentiments(
 
 export const sentimentService = {
   async analyzeSentiment(message: string, _language: Language): Promise<SentimentTag> {
-    const completion = await withTimeout(
-      groq.chat.completions.create({ model: 'llama-3.3-70b-versatile', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${buildSentimentPrompt()} Schema: ${SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] }).catch((error: unknown) => {
-        throw ApiError.badGateway('Groq sentiment analysis failed', { error: error instanceof Error ? error.message : String(error) }, 'GROQ_SENTIMENT_PROVIDER_ERROR');
-      }),
-      env.GROQ_TIMEOUT_MS,
-      'GROQ_SENTIMENT_TIMEOUT',
-      'Groq sentiment analysis timed out'
-    );
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) throw ApiError.badGateway('Groq returned an empty sentiment result', undefined, 'GROQ_EMPTY_SENTIMENT');
     try {
-      const parsed = JSON.parse(raw) as { sentiment?: string };
-      return allowed.includes(parsed.sentiment as SentimentTag) ? parsed.sentiment as SentimentTag : 'neutral';
-    } catch {
-      const tag = allowed.find((candidate) => raw.toLowerCase().includes(candidate));
-      if (!tag) throw ApiError.badGateway('Groq returned malformed sentiment JSON', { raw }, 'GROQ_MALFORMED_SENTIMENT');
-      return tag;
+      const completion = await withTimeout(
+        groq.chat.completions.create({ model: 'llama-3.3-70b-versatile', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${buildSentimentPrompt()} Schema: ${SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] }).catch((error: unknown) => {
+          throw ApiError.badGateway('Groq sentiment analysis failed', { error: error instanceof Error ? error.message : String(error) }, 'GROQ_SENTIMENT_PROVIDER_ERROR');
+        }),
+        env.GROQ_TIMEOUT_MS,
+        'GROQ_SENTIMENT_TIMEOUT',
+        'Groq sentiment analysis timed out'
+      );
+      const raw = completion.choices[0]?.message?.content;
+      if (!raw) {
+        logger.warn('[COMPANION_SENTIMENT] Empty sentiment response, defaulting to neutral');
+        return 'neutral';
+      }
+      try {
+        const parsed = JSON.parse(raw) as { sentiment?: string };
+        return allowed.includes(parsed.sentiment as SentimentTag) ? parsed.sentiment as SentimentTag : 'neutral';
+      } catch {
+        const tag = allowed.find((candidate) => raw.toLowerCase().includes(candidate));
+        if (!tag) {
+          logger.warn('[COMPANION_SENTIMENT] Malformed sentiment response, defaulting to neutral', { raw });
+          return 'neutral';
+        }
+        return tag;
+      }
+    } catch (error) {
+      logger.warn('[COMPANION_SENTIMENT] Sentiment provider unavailable, defaulting to neutral', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return 'neutral';
     }
   },
   async checkAndEscalate(patientId: string, currentSentiment: SentimentTag, contacts: ApprovedContact[], patientName: string): Promise<boolean> {

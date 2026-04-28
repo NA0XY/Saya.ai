@@ -21,6 +21,14 @@ npm test
 npm run seed
 ```
 
+## Local Voice Stack (English v1)
+
+- STT primary: local `faster-whisper` service (`small.en`)
+- TTS primary: Piper CLI
+- Fallback: browser speech synthesis on frontend if backend audio fails
+
+Runbook: [`backend/voice_services/README.md`](./voice_services/README.md)
+
 ## Safety Invariants
 
 - Medical warnings are blocked until the prescription is caregiver-verified.

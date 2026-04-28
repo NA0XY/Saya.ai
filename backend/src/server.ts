@@ -4,6 +4,7 @@ import { logger } from './config/logger';
 import { app } from './app';
 import { startScheduler } from './jobs/scheduler';
 import { attachCompanionWebSocket } from './modules/companion/companion.websocket';
+import { companionSttService } from './modules/companion/companionStt.service';
 
 const server = http.createServer(app);
 const companionWebSocket = attachCompanionWebSocket(server);
@@ -11,6 +12,7 @@ const companionWebSocket = attachCompanionWebSocket(server);
 server.listen(env.PORT, () => {
   logger.info(`Saya.ai backend running on port ${env.PORT}`);
   startScheduler();
+  void companionSttService.checkProviderHealth();
 });
 
 function shutdown(signal: string): void {

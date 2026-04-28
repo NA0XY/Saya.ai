@@ -200,8 +200,171 @@ function getPiperModelPath(language: Language): string | null {
   return resolveOptionalPath(envByLanguage ?? fallback);
 }
 
+function getPiperHttpEndpoint(language: Language): string | null {
+  const langSpecific = language === 'hi' ? process.env.PIPER_TTS_URL_HI : process.env.PIPER_TTS_URL_EN;
+  const fallback = process.env.PIPER_TTS_URL;
+  const endpoint = (langSpecific ?? fallback ?? '').trim();
+  return endpoint || null;
+}
+
+function prependWavSilence(audio: Buffer, silenceMs = 120): Buffer {
+  if (audio.length < 44 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') {
+    return audio;
+  }
+
+  let offset = 12;
+  let fmtOffset = -1;
+  let dataOffset = -1;
+  let dataSize = 0;
+
+  while (offset + 8 <= audio.length) {
+    const chunkId = audio.toString('ascii', offset, offset + 4);
+    const chunkSize = audio.readUInt32LE(offset + 4);
+    const chunkDataStart = offset + 8;
+    if (chunkId === 'fmt ') fmtOffset = chunkDataStart;
+    if (chunkId === 'data') {
+      dataOffset = chunkDataStart;
+      dataSize = chunkSize;
+      break;
+    }
+    offset = chunkDataStart + chunkSize + (chunkSize % 2);
+  }
+
+  if (fmtOffset < 0 || dataOffset < 0 || fmtOffset + 16 > audio.length) return audio;
+  const channels = audio.readUInt16LE(fmtOffset + 2);
+  const sampleRate = audio.readUInt32LE(fmtOffset + 4);
+  const bitsPerSample = audio.readUInt16LE(fmtOffset + 14);
+  const bytesPerSample = Math.max(1, bitsPerSample / 8);
+  const silenceBytes = Math.max(0, Math.round((sampleRate * channels * bytesPerSample * silenceMs) / 1000));
+  if (silenceBytes <= 0) return audio;
+
+  const silenceBuffer = Buffer.alloc(silenceBytes, 0);
+  const dataStart = dataOffset;
+  const dataEnd = Math.min(dataStart + dataSize, audio.length);
+  const beforeData = audio.subarray(0, dataStart);
+  const afterData = audio.subarray(dataStart, dataEnd);
+  const tail = audio.subarray(dataEnd);
+  const combined = Buffer.concat([beforeData, silenceBuffer, afterData, tail]);
+
+  // Update RIFF chunk size and data chunk size headers.
+  combined.writeUInt32LE(combined.length - 8, 4);
+  const dataSizeOffset = dataOffset - 4;
+  combined.writeUInt32LE(dataSize + silenceBytes, dataSizeOffset);
+  return combined;
+}
+
+function splitIntoSentenceChunks(text: string): string[] {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+  const chunks = normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+  if (chunks.length > 0) return chunks;
+  return [normalized];
+}
+
+type WavPcmMeta = {
+  channels: number;
+  sampleRate: number;
+  bitsPerSample: number;
+  audioFormat: number;
+  data: Buffer;
+};
+
+function parsePcmWav(audio: Buffer): WavPcmMeta {
+  if (audio.length < 44 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') {
+    throw ApiError.badGateway('Piper CLI returned a non-WAV audio payload', undefined, 'PIPER_CLI_INVALID_WAV');
+  }
+
+  let offset = 12;
+  let fmtOffset = -1;
+  let fmtSize = 0;
+  let dataOffset = -1;
+  let dataSize = 0;
+
+  while (offset + 8 <= audio.length) {
+    const chunkId = audio.toString('ascii', offset, offset + 4);
+    const chunkSize = audio.readUInt32LE(offset + 4);
+    const chunkDataStart = offset + 8;
+
+    if (chunkId === 'fmt ') {
+      fmtOffset = chunkDataStart;
+      fmtSize = chunkSize;
+    } else if (chunkId === 'data') {
+      dataOffset = chunkDataStart;
+      dataSize = chunkSize;
+      break;
+    }
+
+    offset = chunkDataStart + chunkSize + (chunkSize % 2);
+  }
+
+  if (fmtOffset < 0 || fmtSize < 16 || dataOffset < 0) {
+    throw ApiError.badGateway('Piper CLI WAV payload is missing required chunks', undefined, 'PIPER_CLI_INVALID_WAV');
+  }
+
+  const audioFormat = audio.readUInt16LE(fmtOffset);
+  const channels = audio.readUInt16LE(fmtOffset + 2);
+  const sampleRate = audio.readUInt32LE(fmtOffset + 4);
+  const bitsPerSample = audio.readUInt16LE(fmtOffset + 14);
+  const dataEnd = Math.min(dataOffset + dataSize, audio.length);
+  const data = audio.subarray(dataOffset, dataEnd);
+
+  return { channels, sampleRate, bitsPerSample, audioFormat, data };
+}
+
+function buildPcmWavBuffer(chunks: WavPcmMeta[]): Buffer {
+  if (!chunks.length) {
+    throw ApiError.badGateway('No Piper CLI audio chunks to stitch', undefined, 'PIPER_CLI_EMPTY_AUDIO');
+  }
+  const base = chunks[0];
+  if (base.audioFormat !== 1) {
+    throw ApiError.badGateway('Piper CLI output is not PCM WAV', undefined, 'PIPER_CLI_UNSUPPORTED_WAV');
+  }
+
+  for (let i = 1; i < chunks.length; i += 1) {
+    const chunk = chunks[i];
+    if (
+      chunk.audioFormat !== base.audioFormat ||
+      chunk.channels !== base.channels ||
+      chunk.sampleRate !== base.sampleRate ||
+      chunk.bitsPerSample !== base.bitsPerSample
+    ) {
+      throw ApiError.badGateway(
+        'Piper CLI audio chunks have incompatible WAV formats',
+        undefined,
+        'PIPER_CLI_WAV_MISMATCH'
+      );
+    }
+  }
+
+  const bytesPerSample = base.bitsPerSample / 8;
+  const blockAlign = base.channels * bytesPerSample;
+  const byteRate = base.sampleRate * blockAlign;
+  const totalDataSize = chunks.reduce((sum, chunk) => sum + chunk.data.length, 0);
+  const header = Buffer.alloc(44);
+
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + totalDataSize, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(base.audioFormat, 20);
+  header.writeUInt16LE(base.channels, 22);
+  header.writeUInt32LE(base.sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(base.bitsPerSample, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(totalDataSize, 40);
+
+  return Buffer.concat([header, ...chunks.map((chunk) => chunk.data)], 44 + totalDataSize);
+}
+
 async function synthesizeWithPiperHttp(request: TtsStreamRequest): Promise<TtsStreamResult> {
-  const endpoint = process.env.PIPER_TTS_URL?.trim();
+  const language = request.language ?? 'en';
+  const endpoint = getPiperHttpEndpoint(language);
   if (!endpoint) throw ApiError.badRequest('PIPER_TTS_URL is not configured');
 
   const response = await axios.post<ArrayBuffer>(
@@ -232,14 +395,21 @@ async function synthesizeWithPiperHttp(request: TtsStreamRequest): Promise<TtsSt
     ? 'audio/mpeg'
     : 'audio/wav';
 
+  const rawAudio = Buffer.from(response.data);
+  const audio = contentType === 'audio/wav' ? prependWavSilence(rawAudio, 120) : rawAudio;
+
   return {
-    audio: Buffer.from(response.data),
+    audio,
     contentType,
     provider: 'piper-http',
   };
 }
 
-async function synthesizeWithPiperCli(request: TtsStreamRequest): Promise<TtsStreamResult> {
+async function synthesizePiperCliChunk(
+  request: TtsStreamRequest,
+  textChunk: string,
+  outputPath: string
+): Promise<Buffer> {
   const binaryPath = resolveOptionalPath(process.env.PIPER_BINARY_PATH);
   if (!binaryPath) throw ApiError.badRequest('PIPER_BINARY_PATH is not configured');
   if (!fs.existsSync(binaryPath)) {
@@ -263,7 +433,6 @@ async function synthesizeWithPiperCli(request: TtsStreamRequest): Promise<TtsStr
     throw ApiError.internal(`Piper config file not found at ${configPath}`);
   }
 
-  const outputPath = path.join(os.tmpdir(), `saya-piper-${Date.now()}-${Math.random().toString(16).slice(2)}.wav`);
   const sentiment = request.sentiment ?? 'neutral';
   const tone = request.tone ?? 'warm';
   const voiceSpeed = request.voiceSpeed ?? 'medium';
@@ -302,12 +471,32 @@ async function synthesizeWithPiperCli(request: TtsStreamRequest): Promise<TtsStr
       }
     });
 
-    proc.stdin.write(`${request.text.trim()}\n`);
+    proc.stdin.write(`${textChunk}\n`);
     proc.stdin.end();
   });
 
   const audio = fs.readFileSync(outputPath);
   fs.unlinkSync(outputPath);
+  return audio;
+}
+
+async function synthesizeWithPiperCli(request: TtsStreamRequest): Promise<TtsStreamResult> {
+  const chunks = splitIntoSentenceChunks(request.text);
+  if (chunks.length === 0) throw ApiError.badRequest('TTS text cannot be empty');
+
+  const wavChunks: WavPcmMeta[] = [];
+  for (let index = 0; index < chunks.length; index += 1) {
+    const chunkText = chunks[index];
+    const outputPath = path.join(
+      os.tmpdir(),
+      `saya-piper-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}.wav`
+    );
+    const wav = await synthesizePiperCliChunk(request, chunkText, outputPath);
+    wavChunks.push(parsePcmWav(wav));
+  }
+
+  const stitched = buildPcmWavBuffer(wavChunks);
+  const audio = prependWavSilence(stitched, 120);
   return {
     audio,
     contentType: 'audio/wav',
@@ -316,17 +505,54 @@ async function synthesizeWithPiperCli(request: TtsStreamRequest): Promise<TtsStr
 }
 
 export const companionTtsService = {
+  checkProviderHealth(): void {
+    if ((env.COMPANION_TTS_PROVIDER ?? '').toLowerCase() !== 'piper') return;
+
+    const binaryPath = resolveOptionalPath(env.PIPER_BINARY_PATH);
+    const modelPath = resolveOptionalPath(env.PIPER_MODEL_EN_PATH || process.env.PIPER_MODEL_PATH);
+    const configPath = resolveOptionalPath(env.PIPER_CONFIG_EN_PATH || process.env.PIPER_CONFIG_PATH);
+    const missing: string[] = [];
+    if (!binaryPath) missing.push('PIPER_BINARY_PATH is not configured');
+    if (!modelPath) missing.push('PIPER_MODEL_EN_PATH is not configured');
+    if (binaryPath && !fs.existsSync(binaryPath)) missing.push(`Piper binary not found at ${binaryPath}`);
+    if (modelPath && !fs.existsSync(modelPath)) missing.push(`Piper model not found at ${modelPath}`);
+    if (configPath && !fs.existsSync(configPath)) missing.push(`Piper config not found at ${configPath}`);
+    if (missing.length > 0) {
+      logger.warn('[COMPANION_TTS] Piper CLI health check warnings', { missing });
+    }
+  },
+
   async synthesizeSpeech(request: TtsStreamRequest): Promise<TtsStreamResult> {
     const trimmedText = request.text.trim();
     if (!trimmedText) throw ApiError.badRequest('TTS text cannot be empty');
     const effectiveRequest = { ...request, text: trimmedText };
 
-    const ttsProvider = (process.env.COMPANION_TTS_PROVIDER ?? '').trim().toLowerCase();
+    const ttsProvider = (env.COMPANION_TTS_PROVIDER ?? '').trim().toLowerCase();
     const prefersPiper = ttsProvider === 'piper' || Boolean(process.env.PIPER_TTS_URL || process.env.PIPER_BINARY_PATH);
 
     if (prefersPiper) {
-      const canUsePiperHttp = Boolean(process.env.PIPER_TTS_URL?.trim());
-      const canUsePiperCli = Boolean(process.env.PIPER_BINARY_PATH?.trim());
+      const language = effectiveRequest.language ?? 'en';
+      const canUsePiperCli = Boolean(env.PIPER_BINARY_PATH?.trim());
+      const piperHttpDebugEnabled = env.PIPER_HTTP_DEBUG_ENABLED.toLowerCase() === 'true';
+      const canUsePiperHttp = piperHttpDebugEnabled && Boolean(getPiperHttpEndpoint(language));
+      let lastPiperError: unknown = null;
+
+      if (canUsePiperCli) {
+        try {
+          const result = await synthesizeWithPiperCli(effectiveRequest);
+          logger.info('[COMPANION_TTS] Piper CLI synthesized speech', {
+            provider: result.provider,
+            contentType: result.contentType,
+            bytes: result.audio.length,
+          });
+          return result;
+        } catch (error) {
+          lastPiperError = error;
+          logger.warn('[COMPANION_TTS] Piper CLI failed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
 
       if (canUsePiperHttp) {
         try {
@@ -338,22 +564,24 @@ export const companionTtsService = {
           });
           return result;
         } catch (error) {
-          if (!canUsePiperCli) throw error;
-          logger.warn('[COMPANION_TTS] Piper HTTP failed, trying Piper CLI fallback', {
+          lastPiperError = error;
+          logger.warn('[COMPANION_TTS] Piper CLI failed', {
             error: error instanceof Error ? error.message : String(error),
           });
         }
       }
 
-      if (canUsePiperCli) {
-        const result = await synthesizeWithPiperCli(effectiveRequest);
-        logger.info('[COMPANION_TTS] Piper CLI synthesized speech', {
-          provider: result.provider,
-          contentType: result.contentType,
-          bytes: result.audio.length,
-        });
-        return result;
-      }
+      // Enforce fallback order:
+      // Piper CLI -> Browser TTS (frontend fallback) -> Google TTS.
+      // Piper HTTP is debug-only and never required in production flow.
+      // Throw here so frontend can trigger browser speech before Google is attempted.
+      throw ApiError.badGateway(
+        `Piper TTS unavailable: ${
+          lastPiperError instanceof Error ? lastPiperError.message : 'No Piper backend reachable'
+        }`,
+        undefined,
+        'PIPER_TTS_UNAVAILABLE'
+      );
     }
 
     const language = effectiveRequest.language ?? 'en';

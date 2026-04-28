@@ -100,8 +100,8 @@ exports.companionController = {
         await patient_service_1.patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user.id);
         if (!req.file?.buffer)
             throw apiError_1.ApiError.badRequest('Audio file is required');
-        const language = req.body.language === 'hi' ? 'hi' : 'en';
-        const transcription = await companionStt_service_1.companionSttService.transcribeAudio(req.file.buffer, req.file.mimetype ?? 'audio/webm', language);
+        const captureDurationMs = Number(req.body?.capture_ms);
+        const transcription = await companionStt_service_1.companionSttService.transcribeAudio(req.file.buffer, req.file.mimetype ?? 'audio/webm', 'en', Number.isFinite(captureDurationMs) ? captureDurationMs : undefined);
         res.json((0, apiResponse_1.successResponse)(transcription));
     }),
     getMemories: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
@@ -137,13 +137,13 @@ exports.companionController = {
         const patient = await patient_repository_1.patientRepository.findById(req.params.patientId);
         if (!patient)
             throw apiError_1.ApiError.notFound('Patient');
-        res.json((0, apiResponse_1.successResponse)({ tone: patient.companion_tone, language: patient.language_preference }));
+        res.json((0, apiResponse_1.successResponse)({ tone: patient.companion_tone, language: 'en' }));
     }),
     updatePreferences: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
         await patient_service_1.patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user.id);
         const updated = await patient_repository_1.patientRepository.update(req.params.patientId, {
             companion_tone: req.body.tone,
-            language_preference: req.body.language
+            language_preference: 'en'
         });
         res.json((0, apiResponse_1.successResponse)(updated));
     })

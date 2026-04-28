@@ -100,11 +100,16 @@ export const companionController = {
     }
     res.end();
   }),
-  transcribeSpeech: asyncHandler(async (req: Request<{ patientId: string }, object, { language?: 'hi' | 'en' }>, res: Response) => {
+  transcribeSpeech: asyncHandler(async (req: Request<{ patientId: string }, object, { language?: 'hi' | 'en'; capture_ms?: string }>, res: Response) => {
     await patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user!.id);
     if (!req.file?.buffer) throw ApiError.badRequest('Audio file is required');
-    const language = req.body.language === 'hi' ? 'hi' : 'en';
-    const transcription = await companionSttService.transcribeAudio(req.file.buffer, req.file.mimetype ?? 'audio/webm', language);
+    const captureDurationMs = Number(req.body?.capture_ms);
+    const transcription = await companionSttService.transcribeAudio(
+      req.file.buffer,
+      req.file.mimetype ?? 'audio/webm',
+      'en',
+      Number.isFinite(captureDurationMs) ? captureDurationMs : undefined
+    );
     res.json(successResponse(transcription));
   }),
   getMemories: asyncHandler(async (req: Request<{ patientId: string }>, res: Response) => {
@@ -139,7 +144,7 @@ export const companionController = {
     await patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user!.id);
     const patient = await patientRepository.findById(req.params.patientId);
     if (!patient) throw ApiError.notFound('Patient');
-    res.json(successResponse({ tone: patient.companion_tone, language: patient.language_preference }));
+    res.json(successResponse({ tone: patient.companion_tone, language: 'en' as const }));
   }),
   updatePreferences: asyncHandler(async (
     req: Request<{ patientId: string }, object, { tone: 'warm' | 'formal' | 'playful'; language: 'hi' | 'en' }>,
@@ -148,7 +153,7 @@ export const companionController = {
     await patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user!.id);
     const updated = await patientRepository.update(req.params.patientId, {
       companion_tone: req.body.tone,
-      language_preference: req.body.language
+      language_preference: 'en'
     });
     res.json(successResponse(updated));
   })

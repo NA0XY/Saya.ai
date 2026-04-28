@@ -8,7 +8,14 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "node --test -r ts-node/register \"tests/**/*.test.ts\"",
-    "seed": "ts-node src/data/indianDrugSeed.ts"
+    "seed": "ts-node src/data/indianDrugSeed.ts",
+    "stt:local": "python voice_services/stt_service.py",
+    "stt:health": "node scripts/check-local-stt.mjs",
+    "tts:piper:check": "node scripts/check-piper-config.mjs",
+    "voice:doctor": "npm run tts:piper:check && npm run stt:health",
+    "piper:en": "python -m piper.http_server -m ./voices/en_US-lessac-medium.onnx --host 127.0.0.1 --port 5000",
+    "piper:hi": "python -m piper.http_server -m ./voices/hi_IN-pratham-medium.onnx --host 127.0.0.1 --port 5001",
+    "piper:test": "node -e \"fetch('http://127.0.0.1:5000',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'hello from piper'})}).then(r=>{if(!r.ok) throw new Error('EN failed'); return r.arrayBuffer();}).then(()=>fetch('http://127.0.0.1:5001',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'namaste dosto'})})).then(r=>{if(!r.ok) throw new Error('HI failed'); return r.arrayBuffer();}).then(()=>console.log('Piper EN+HI OK')).catch(e=>{console.error(e.message);process.exit(1);});\""
   },
   "dependencies": {
     "@google-cloud/vision": "^4.3.3",

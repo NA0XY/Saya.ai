@@ -6,7 +6,7 @@ import { companionLimiter } from '../middleware/rateLimit.middleware';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.middleware';
 import { companionController } from '../modules/companion/companion.controller';
 
-const ChatSchema = z.object({ patient_id: z.string().uuid(), message: z.string().min(1), language: z.enum(['hi', 'en']).default('hi') });
+const ChatSchema = z.object({ patient_id: z.string().uuid(), message: z.string().min(1), language: z.enum(['hi', 'en']).default('en') });
 const PatientParamsSchema = z.object({ patientId: z.string().uuid() });
 const MemoryParamsSchema = z.object({ patientId: z.string().uuid(), memoryKey: z.string().min(1) });
 const VaultSearchSchema = z.object({ q: z.string().min(2), limit: z.coerce.number().int().positive().max(20).optional() });

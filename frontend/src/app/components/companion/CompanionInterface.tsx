@@ -17,26 +17,38 @@ import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
 import { NewsTicker } from "./NewsTicker";
 import { ChatHistory, type ChatMessage, type SentimentTag } from "./ChatHistory";
 
-type VoiceState = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
-type InputLanguage = "en" | "hi";
+type VoiceState =
+  | "idle"
+  | "listening"
+  | "finalizing"
+  | "transcribing"
+  | "thinking"
+  | "speaking"
+  | "auto_relisten";
 type TonePreference = "warm" | "formal" | "playful";
 type LatencyMetrics = {
+  capture_ms?: number;
   stt_ms?: number;
   chat_first_token_ms?: number;
   chat_total_ms?: number;
   tts_first_audio_ms?: number;
   tts_total_ms?: number;
 };
+const ENGLISH_ONLY_FALLBACK_REPLY =
+  "I am here with you. I will continue in English so I can support you clearly. How are you feeling right now?";
 
 const LANGUAGE_STORAGE_KEY = "saya_language_preference";
 const VOICE_SPEED_STORAGE_KEY = "saya_voice_speed";
 const NEWS_CATEGORIES_STORAGE_KEY = "saya_news_categories";
 const PATIENT_STORAGE_KEY = "saya_patient_id";
 const TONE_STORAGE_KEY = "saya_companion_tone";
+const MIN_ACCEPTABLE_TRANSCRIPT_SCORE = 0.58;
+const MIN_AUDIO_BLOB_BYTES = 8 * 1024;
+const VOICE_PIPELINE_V2_ENABLED = (import.meta.env.VITE_VOICE_PIPELINE_V2 ?? "true") !== "false";
 
 function sentimentToMood(sentiment: SentimentTag, voiceState: VoiceState): MoodType {
-  if (voiceState === "listening") return "listening";
-  if (voiceState === "transcribing" || voiceState === "thinking") return "thinking";
+  if (voiceState === "listening" || voiceState === "auto_relisten") return "listening";
+  if (voiceState === "finalizing" || voiceState === "transcribing" || voiceState === "thinking") return "thinking";
   switch (sentiment) {
     case "joy":
       return "happy";
@@ -81,10 +93,162 @@ function normalizeHistoryMessage(message: CompanionHistoryMessage): ChatMessage 
   return {
     id: message.id,
     role: message.role,
-    content: message.content,
+    content:
+      message.role === "assistant"
+        ? stripControlTags(message.content)
+        : message.content,
     sentiment: (message.sentiment ?? undefined) as SentimentTag | undefined,
     timestamp: new Date(message.created_at),
   };
+}
+
+function countWords(value: string): number {
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function normalizeTranscriptText(value: string): string {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/([,.!?])\1+/g, "$1")
+    .replace(/\b(\w+)(\s+\1\b){2,}/gi, "$1")
+    .trim();
+}
+
+function hasHallucinationPattern(value: string): boolean {
+  const lower = value.toLowerCase();
+  const suspiciousSnippets = [
+    "thanks for watching",
+    "subscribe",
+    "subtitles by",
+    "amara.org",
+    "captions by",
+  ];
+  if (suspiciousSnippets.some((snippet) => lower.includes(snippet))) return true;
+  return /\b(\w+)\s+\1\s+\1\b/i.test(value);
+}
+
+function transcriptQualityScore(transcript: string, listenDurationMs: number, audioBytes = 0): number {
+  const words = countWords(transcript);
+  if (!words) return 0;
+
+  const normalized = normalizeTranscriptText(transcript);
+  const lowerWords = normalized.toLowerCase().split(/\s+/).filter(Boolean);
+  const fillerOnly = words < 3 && lowerWords.every((word) => ["uh", "um", "hmm", "ah", "er"].includes(word));
+  const abruptCutoff = /\b(?:an|and|the|to|for|with|of)\s*$/.test(normalized.toLowerCase()) || /[bcdfghjklmnpqrstvwxyz]$/i.test(normalized) && !/[.?!]$/.test(normalized);
+
+  let score = 0.5;
+  if (words >= 2) score += 0.12;
+  if (words >= 5) score += 0.08;
+  if (/[,.!?]/.test(normalized)) score += 0.06;
+  if (listenDurationMs > 6000 && words <= 2) score -= 0.2;
+  if (listenDurationMs < 1800 && words > 16) score -= 0.22;
+  if (audioBytes > 0 && audioBytes < 9000 && words > 9) score -= 0.22;
+  if (audioBytes > 0 && audioBytes > 60000 && words <= 2) score -= 0.2;
+  if (hasHallucinationPattern(normalized)) score -= 0.35;
+  if (fillerOnly) score -= 0.28;
+  if (abruptCutoff) score -= 0.12;
+
+  return Math.max(0, Math.min(1, Number(score.toFixed(3))));
+}
+
+type TranscriptCandidate = {
+  transcript: string;
+  source: "browser" | "server";
+  qualityScore: number;
+};
+
+function pickFinalTranscript(
+  browserTranscript: string,
+  sttCandidate: { transcript: string; qualityScore?: number },
+  listenDurationMs: number,
+  audioBytes = 0
+): TranscriptCandidate | null {
+  const browser = normalizeTranscriptText(browserTranscript);
+  const stt = normalizeTranscriptText(sttCandidate.transcript);
+  const serverScore =
+    typeof sttCandidate.qualityScore === "number"
+      ? sttCandidate.qualityScore
+      : transcriptQualityScore(stt, listenDurationMs, audioBytes);
+  const browserScore = transcriptQualityScore(browser, listenDurationMs, audioBytes);
+
+  if (stt && serverScore >= MIN_ACCEPTABLE_TRANSCRIPT_SCORE) {
+    return { transcript: stt, source: "server", qualityScore: serverScore };
+  }
+  if (browser && browserScore >= MIN_ACCEPTABLE_TRANSCRIPT_SCORE) {
+    return { transcript: browser, source: "browser", qualityScore: browserScore };
+  }
+
+  return null;
+}
+
+function pickRelaxedFallbackTranscript(
+  browserTranscript: string,
+  sttCandidate: { transcript: string; qualityScore?: number },
+  listenDurationMs: number,
+  audioBytes = 0
+): TranscriptCandidate | null {
+  const browser = normalizeTranscriptText(browserTranscript);
+  const stt = normalizeTranscriptText(sttCandidate.transcript);
+  const serverScore =
+    typeof sttCandidate.qualityScore === "number"
+      ? sttCandidate.qualityScore
+      : transcriptQualityScore(stt, listenDurationMs, audioBytes);
+  const browserScore = transcriptQualityScore(browser, listenDurationMs, audioBytes);
+
+  if (!browser && !stt) return null;
+  if (!stt) return { transcript: browser, source: "browser", qualityScore: browserScore };
+  if (!browser) return { transcript: stt, source: "server", qualityScore: serverScore };
+  return serverScore >= browserScore
+    ? { transcript: stt, source: "server", qualityScore: serverScore }
+    : { transcript: browser, source: "browser", qualityScore: browserScore };
+}
+
+function pickBestAlternative(result: any): string {
+  const alternatives = Array.from(result ?? [])
+    .map((item: any) => ({
+      transcript: typeof item?.transcript === "string" ? item.transcript.trim() : "",
+      confidence: typeof item?.confidence === "number" ? item.confidence : 0,
+    }))
+    .filter((item) => item.transcript.length > 0);
+
+  if (alternatives.length === 0) return "";
+  alternatives.sort((a, b) => {
+    if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+    return b.transcript.length - a.transcript.length;
+  });
+  return alternatives[0].transcript;
+}
+
+function mergeTranscriptParts(primary: string, secondary: string): string {
+  const left = primary.trim();
+  const right = secondary.trim();
+  if (!left) return right;
+  if (!right) return left;
+  if (left.includes(right)) return left;
+  if (right.includes(left)) return right;
+
+  const leftWords = left.split(/\s+/);
+  const rightWords = right.split(/\s+/);
+  const maxOverlap = Math.min(leftWords.length, rightWords.length);
+
+  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+    const leftTail = leftWords.slice(-overlap).join(" ").toLowerCase();
+    const rightHead = rightWords.slice(0, overlap).join(" ").toLowerCase();
+    if (leftTail === rightHead) {
+      return `${leftWords.join(" ")} ${rightWords.slice(overlap).join(" ")}`.trim();
+    }
+  }
+
+  return `${left} ${right}`.trim();
+}
+
+function stripControlTags(value: string): string {
+  const stripped = value
+    .replace(/\[MEMORY:[^\]]+\]/g, "")
+    .replace(/\[ACTION:contact_family:[^\]]+\]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return /[\u0900-\u097F]/.test(stripped) ? ENGLISH_ONLY_FALLBACK_REPLY : stripped;
 }
 
 function getPatientIdFromContext(): string | null {
@@ -106,12 +270,28 @@ export function CompanionInterface() {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const audioQueueRef = useRef<string[]>([]);
   const isAudioPlayingRef = useRef(false);
+  const speechFallbackRef = useRef<{ text: string; sentiment: SentimentTag } | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const capturedAudioRef = useRef<Blob | null>(null);
   const utteranceHandledRef = useRef(false);
   const recordingStopWaitRef = useRef<Promise<void> | null>(null);
+  const autoResumeListeningRef = useRef(false);
+  const voiceStateRef = useRef<VoiceState>("idle");
+  const turnIdRef = useRef<string | null>(null);
+  const submittedTurnIdRef = useRef<string | null>(null);
+  const transcriptHintTimerRef = useRef<number | null>(null);
+  const recognitionStartedAtRef = useRef(0);
+  const speechActivityDetectedRef = useRef(false);
+  const noSpeechRetryCountRef = useRef(0);
+  const shortListenRestartCountRef = useRef(0);
+  const silenceStopTimerRef = useRef<number | null>(null);
+  const lastSpeechActivityAtRef = useRef(0);
+  const lastInterimRef = useRef("");
+  const latestLiveTranscriptRef = useRef("");
+  const userStoppedListeningRef = useRef(false);
+  const manualStopRequestedRef = useRef(false);
 
   const [patientId, setPatientId] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -121,16 +301,7 @@ export function CompanionInterface() {
   const [liveTranscript, setLiveTranscript] = useState("");
   const [greetingText, setGreetingText] = useState("Namaste. How are you feeling today?");
 
-  const [inputLanguage, setInputLanguage] = useState<InputLanguage>(() => {
-    if (typeof window === "undefined") return "en";
-    const value = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return value === "hi" ? "hi" : "en";
-  });
-  const [settingsLanguage, setSettingsLanguage] = useState<InputLanguage>(() => {
-    if (typeof window === "undefined") return "en";
-    const value = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return value === "hi" ? "hi" : "en";
-  });
+  const inputLanguage: "en" = "en";
   const [tonePreference, setTonePreference] = useState<TonePreference>(() => {
     if (typeof window === "undefined") return "warm";
     const value = localStorage.getItem(TONE_STORAGE_KEY);
@@ -153,6 +324,8 @@ export function CompanionInterface() {
 
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
+  const [heardTranscriptHint, setHeardTranscriptHint] = useState<string | null>(null);
+  const [showRetryChips, setShowRetryChips] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [latencyMetrics, setLatencyMetrics] = useState<LatencyMetrics>({});
@@ -173,6 +346,10 @@ export function CompanionInterface() {
   const [forceSadMood, setForceSadMood] = useState(false);
   const [isReplySpeaking, setIsReplySpeaking] = useState(false);
 
+  useEffect(() => {
+    voiceStateRef.current = voiceState;
+  }, [voiceState]);
+
   const effectiveMood = useMemo<MoodType>(() => {
     if (forceSadMood) return "sad";
     return sentimentToMood(currentSentiment, voiceState);
@@ -186,6 +363,10 @@ export function CompanionInterface() {
     if (maxSpeechTimerRef.current !== null) {
       window.clearTimeout(maxSpeechTimerRef.current);
       maxSpeechTimerRef.current = null;
+    }
+    if (silenceStopTimerRef.current !== null) {
+      window.clearTimeout(silenceStopTimerRef.current);
+      silenceStopTimerRef.current = null;
     }
   };
 
@@ -212,9 +393,27 @@ export function CompanionInterface() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
       mediaStreamRef.current = stream;
-      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const recorderMimeCandidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ];
+      const selectedMimeType = recorderMimeCandidates.find((mime) =>
+        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(mime)
+      );
+      const recorder = selectedMimeType
+        ? new MediaRecorder(stream, { mimeType: selectedMimeType, audioBitsPerSecond: 128000 })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -224,24 +423,62 @@ export function CompanionInterface() {
       recorder.onstop = () => {
         if (audioChunksRef.current.length > 0) {
           capturedAudioRef.current = new Blob(audioChunksRef.current, {
-            type: recorder.mimeType || "audio/webm"
+            type: recorder.mimeType || selectedMimeType || "audio/webm"
           });
         }
       };
-      recorder.start();
+      recorder.start(250);
     } catch {
       // If capture fails, browser STT can still proceed.
     }
+  };
+
+  const startVoiceCaptureSession = () => {
+    if (
+      !recognitionRef.current ||
+      (voiceStateRef.current !== "idle" && voiceStateRef.current !== "auto_relisten")
+    ) {
+      return;
+    }
+    void (async () => {
+      try {
+        setPermissionError(null);
+        setShowRetryChips(false);
+        setHeardTranscriptHint(null);
+        manualStopRequestedRef.current = false;
+        userStoppedListeningRef.current = false;
+        turnIdRef.current = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        submittedTurnIdRef.current = null;
+        await startRecordingCapture();
+        recognitionRef.current.start();
+        maxSpeechTimerRef.current = window.setTimeout(() => {
+          recognitionRef.current?.stop();
+        }, 30000);
+      } catch {
+        autoResumeListeningRef.current = false;
+        setPermissionError("Voice not available. You can type instead.");
+        setShowTextInput(true);
+      }
+    })();
   };
 
   const fallbackSpeakInBrowser = (text: string, sentiment: SentimentTag) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     setVoiceState("speaking");
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
+    utterance.lang = "en-IN";
     utterance.rate = voiceSpeed === "slow" ? 0.9 : voiceSpeed === "fast" ? 1.1 : 1.0;
     utterance.pitch = sentiment === "joy" ? 1.15 : sentiment === "sadness" ? 0.9 : 1.0;
-    utterance.onend = () => setVoiceState("idle");
+    utterance.onend = () => {
+      setVoiceState("idle");
+      if (autoResumeListeningRef.current && !showTextInput && recognitionRef.current) {
+        setVoiceState("auto_relisten");
+        window.setTimeout(() => {
+          setVoiceState("idle");
+          startVoiceCaptureSession();
+        }, 350);
+      }
+    };
     utterance.onerror = () => setVoiceState("idle");
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
@@ -253,6 +490,13 @@ export function CompanionInterface() {
       isAudioPlayingRef.current = false;
       setIsReplySpeaking(false);
       setVoiceState("idle");
+      if (autoResumeListeningRef.current && !showTextInput && recognitionRef.current && !userStoppedListeningRef.current) {
+        setVoiceState("auto_relisten");
+        window.setTimeout(() => {
+          setVoiceState("idle");
+          startVoiceCaptureSession();
+        }, 350);
+      }
       return;
     }
 
@@ -264,18 +508,41 @@ export function CompanionInterface() {
     setIsReplySpeaking(true);
     setVoiceState("speaking");
     player.src = nextUrl;
+    player.preload = "auto";
+    player.currentTime = 0;
     player.playbackRate = voiceSpeed === "slow" ? 0.9 : voiceSpeed === "fast" ? 1.1 : 1.0;
-    void player.play().catch(() => {
-      URL.revokeObjectURL(nextUrl);
-      playNextQueuedAudio();
-    });
+
+    const startPlayback = () => {
+      void player.play().catch(() => {
+        URL.revokeObjectURL(nextUrl);
+        playNextQueuedAudio();
+      });
+    };
+
+    if (player.readyState >= 2) {
+      startPlayback();
+    } else {
+      player.onloadeddata = () => {
+        startPlayback();
+      };
+    }
 
     player.onended = () => {
+      speechFallbackRef.current = null;
       URL.revokeObjectURL(nextUrl);
       playNextQueuedAudio();
     };
     player.onerror = () => {
       URL.revokeObjectURL(nextUrl);
+      const fallback = speechFallbackRef.current;
+      speechFallbackRef.current = null;
+      if (fallback) {
+        audioQueueRef.current = [];
+        isAudioPlayingRef.current = false;
+        setIsReplySpeaking(false);
+        fallbackSpeakInBrowser(fallback.text, fallback.sentiment);
+        return;
+      }
       playNextQueuedAudio();
     };
   };
@@ -283,11 +550,12 @@ export function CompanionInterface() {
   const playAssistantSpeech = async (text: string, sentiment: SentimentTag, targetPatientId?: string) => {
     const effectivePatientId = targetPatientId ?? patientId;
     if (!effectivePatientId) return;
+    speechFallbackRef.current = { text, sentiment };
     const ttsStartedAt = performance.now();
     try {
       const response = await api.streamCompanionSpeech(effectivePatientId, {
         text,
-        language: inputLanguage,
+        language: "en",
         sentiment,
         tone: tonePreference,
         voiceSpeed,
@@ -319,6 +587,9 @@ export function CompanionInterface() {
       }));
 
       const audioBlob = new Blob(chunks, { type: contentType.includes("wav") ? "audio/wav" : "audio/mpeg" });
+      if (audioBlob.size < 2048) {
+        throw new Error("TTS audio payload too small");
+      }
       const audioUrl = URL.createObjectURL(audioBlob);
       audioQueueRef.current.push(audioUrl);
       if (!isAudioPlayingRef.current) {
@@ -377,16 +648,16 @@ export function CompanionInterface() {
     try {
       const preferences = await api.getCompanionPreferences(currentPatientId);
       setTonePreference(preferences.tone);
-      setSettingsLanguage(preferences.language);
-      setInputLanguage(preferences.language);
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, "en");
       localStorage.setItem(TONE_STORAGE_KEY, preferences.tone);
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, preferences.language);
     } catch {
       // Keep existing local defaults when backend preference loading fails.
     }
   };
 
-  const handleResponse = async (userInput: string) => {
+  const handleResponse = async (userInput: string, source: "voice" | "text" | "action" = "text") => {
+    autoResumeListeningRef.current = source === "voice";
+    setShowRetryChips(false);
     let activePatientId = patientId;
     if (!activePatientId) {
       try {
@@ -442,9 +713,10 @@ export function CompanionInterface() {
           }));
         }
         streamedReply = `${streamedReply}${event.token}`;
+        const sanitizedStreamedReply = stripControlTags(streamedReply);
         setMessages((prev) =>
           prev.map((message) =>
-            message.id === assistantMessageId ? { ...message, content: streamedReply } : message
+            message.id === assistantMessageId ? { ...message, content: sanitizedStreamedReply } : message
           )
         );
       }
@@ -458,7 +730,7 @@ export function CompanionInterface() {
           {
             patient_id: activePatientId,
             message: userInput,
-            language: inputLanguage,
+            language: "en",
           },
           applyStreamEvent
         );
@@ -466,13 +738,13 @@ export function CompanionInterface() {
         const fallbackResult = await api.companionChat({
           patient_id: activePatientId,
           message: userInput,
-          language: inputLanguage,
+          language: "en",
         });
         streamedReply = fallbackResult.reply;
         result = fallbackResult;
       }
 
-      const finalReply = (streamedReply || result.reply).trim();
+      const finalReply = stripControlTags((streamedReply || result.reply).trim());
       setMessages((prev) =>
         prev.map((message) =>
           message.id === assistantMessageId
@@ -580,91 +852,241 @@ export function CompanionInterface() {
 
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognitionInstance = new SpeechRecognition();
+    const BASE_SILENCE_MS = 2200;
+    const EXTENDED_SILENCE_MS = 1200;
+    const MAX_SILENCE_MS = 3800;
+
     recognitionInstance.continuous = false;
     recognitionInstance.interimResults = true;
     recognitionInstance.maxAlternatives = 3;
-    recognitionInstance.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
+    recognitionInstance.lang = "en-IN";
+
+    const resetCapturedText = () => {
+      setLiveTranscript("");
+      setInterimTranscript("");
+      finalTranscriptRef.current = "";
+      lastInterimRef.current = "";
+      latestLiveTranscriptRef.current = "";
+    };
+
+    const scheduleSilenceStop = () => {
+      if (silenceStopTimerRef.current !== null) window.clearTimeout(silenceStopTimerRef.current);
+      const now = Date.now();
+      const shouldExtend = now - lastSpeechActivityAtRef.current <= 1200;
+      const timeoutMs = Math.min(
+        MAX_SILENCE_MS,
+        BASE_SILENCE_MS + (shouldExtend ? EXTENDED_SILENCE_MS : 0)
+      );
+      silenceStopTimerRef.current = window.setTimeout(() => {
+        recognitionRef.current?.stop();
+      }, timeoutMs);
+    };
+
+    const finalizeSpeechTurn = async (manualStop: boolean) => {
+      if (utteranceHandledRef.current) return;
+      clearSpeechTimers();
+      setVoiceState("finalizing");
+      await stopRecordingCapture();
+
+      const browserTranscript = normalizeTranscriptText(
+        mergeTranscriptParts(
+          mergeTranscriptParts(finalTranscriptRef.current.trim(), lastInterimRef.current),
+          latestLiveTranscriptRef.current
+        ).trim()
+      );
+      const audioBlob = capturedAudioRef.current;
+      const audioBytes = audioBlob?.size ?? 0;
+      const listenDurationMs = Math.max(0, Date.now() - recognitionStartedAtRef.current);
+      setLatencyMetrics((prev) => ({ ...prev, capture_ms: listenDurationMs }));
+
+      let serverTranscript = "";
+      let serverQualityScore = 0;
+      let sttServiceUnavailable = false;
+      if (
+        audioBlob &&
+        patientId &&
+        (audioBytes >= MIN_AUDIO_BLOB_BYTES || browserTranscript.length === 0)
+      ) {
+        setVoiceState("transcribing");
+        try {
+          const stt = await api.transcribeCompanionAudio(patientId, audioBlob, inputLanguage, listenDurationMs);
+          serverTranscript = normalizeTranscriptText(stt.transcript);
+          serverQualityScore = stt.quality_score ?? transcriptQualityScore(serverTranscript, listenDurationMs, audioBytes);
+          setLatencyMetrics((prev) => ({
+            ...prev,
+            stt_ms: typeof stt.stt_ms === "number" ? stt.stt_ms : prev.stt_ms
+          }));
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error ?? "");
+          sttServiceUnavailable = /local[_\s-]?stt|local_stt_provider_error|stt.*(unreachable|failed|timeout)|502|503/i.test(
+            message
+          );
+          serverTranscript = "";
+        }
+      }
+
+      const selected = VOICE_PIPELINE_V2_ENABLED
+        ? pickFinalTranscript(
+            browserTranscript,
+            { transcript: serverTranscript, qualityScore: serverQualityScore },
+            listenDurationMs,
+            audioBytes
+          )
+        : (() => {
+            const fallbackTranscript = normalizeTranscriptText(serverTranscript || browserTranscript);
+            if (!fallbackTranscript) return null;
+            return {
+              transcript: fallbackTranscript,
+              source: serverTranscript ? "server" : "browser",
+              qualityScore: 1
+            } as TranscriptCandidate;
+          })();
+
+      const relaxedFallback = pickRelaxedFallbackTranscript(
+        browserTranscript,
+        { transcript: serverTranscript, qualityScore: serverQualityScore },
+        listenDurationMs,
+        audioBytes
+      );
+
+      const browserWordCount = countWords(browserTranscript);
+      const permissiveBrowserFallback =
+        browserTranscript &&
+        !serverTranscript &&
+        (
+          browserWordCount >= 2 ||
+          (browserWordCount === 1 && listenDurationMs <= 2500)
+        )
+          ? ({
+              transcript: browserTranscript,
+              source: "browser",
+              qualityScore: Math.max(0.3, transcriptQualityScore(browserTranscript, listenDurationMs, audioBytes)),
+            } as TranscriptCandidate)
+          : null;
+
+      const finalSelected =
+        selected ??
+        (relaxedFallback && relaxedFallback.qualityScore >= 0.35 ? relaxedFallback : null) ??
+        permissiveBrowserFallback;
+
+      if (!finalSelected) {
+        resetCapturedText();
+        if (manualStop && !browserTranscript && !serverTranscript) {
+          setPermissionError(null);
+          setShowRetryChips(false);
+          setVoiceState("idle");
+          return;
+        }
+        setPermissionError(
+          sttServiceUnavailable
+            ? "Voice service is temporarily unavailable. Please try again in a moment."
+            : "I couldn't capture voice clearly. Please try again."
+        );
+        setShowRetryChips(true);
+        setVoiceState("idle");
+        return;
+      }
+
+      if (
+        finalSelected.source === "server" &&
+        browserTranscript &&
+        finalSelected.transcript.toLowerCase() !== browserTranscript.toLowerCase()
+      ) {
+        setHeardTranscriptHint(`Heard: ${finalSelected.transcript}`);
+        if (transcriptHintTimerRef.current !== null) {
+          window.clearTimeout(transcriptHintTimerRef.current);
+        }
+        transcriptHintTimerRef.current = window.setTimeout(() => {
+          setHeardTranscriptHint(null);
+          transcriptHintTimerRef.current = null;
+        }, 2500);
+      } else {
+        setHeardTranscriptHint(null);
+      }
+
+      const currentTurnId = turnIdRef.current;
+      if (!currentTurnId || submittedTurnIdRef.current === currentTurnId) {
+        setVoiceState("idle");
+        return;
+      }
+      submittedTurnIdRef.current = currentTurnId;
+      utteranceHandledRef.current = true;
+      noSpeechRetryCountRef.current = 0;
+      shortListenRestartCountRef.current = 0;
+      resetCapturedText();
+      setVoiceState("thinking");
+      void handleResponse(finalSelected.transcript, "voice");
+    };
 
     recognitionInstance.onstart = () => {
       setVoiceState("listening");
       setInterimTranscript("");
       setLiveTranscript("");
+      latestLiveTranscriptRef.current = "";
       finalTranscriptRef.current = "";
+      lastInterimRef.current = "";
       utteranceHandledRef.current = false;
+      speechActivityDetectedRef.current = false;
+      recognitionStartedAtRef.current = Date.now();
+      lastSpeechActivityAtRef.current = Date.now();
       setPermissionError(null);
+      setShowRetryChips(false);
     };
 
     recognitionInstance.onresult = (event: any) => {
       let interim = "";
-      let finalTranscript = "";
+      let finalText = "";
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
-        if (result.isFinal) finalTranscript += result[0].transcript;
-        else interim += result[0].transcript;
+        const best = pickBestAlternative(result);
+        if (!best) continue;
+        if (result.isFinal) finalText += ` ${best}`;
+        else interim += ` ${best}`;
       }
 
-      setInterimTranscript(interim.trim());
-      if (finalTranscript.trim()) {
-        finalTranscriptRef.current = `${finalTranscriptRef.current} ${finalTranscript}`.trim();
-        setInterimTranscript("");
+      const interimChunk = normalizeTranscriptText(interim);
+      const finalChunk = normalizeTranscriptText(finalText);
+      if (finalChunk || interimChunk) {
+        speechActivityDetectedRef.current = true;
+        lastSpeechActivityAtRef.current = Date.now();
+        scheduleSilenceStop();
       }
-      setLiveTranscript(`${finalTranscriptRef.current} ${interim}`.trim());
+      if (finalChunk) {
+        finalTranscriptRef.current = mergeTranscriptParts(finalTranscriptRef.current, finalChunk);
+        setInterimTranscript("");
+      } else {
+        setInterimTranscript(interimChunk);
+      }
+      if (interimChunk) lastInterimRef.current = interimChunk;
+      const mergedLive = mergeTranscriptParts(finalTranscriptRef.current, interimChunk);
+      latestLiveTranscriptRef.current = mergedLive;
+      setLiveTranscript(mergedLive);
     };
 
     recognitionInstance.onend = () => {
-      void (async () => {
-        await stopRecordingCapture();
-
-      if (maxSpeechTimerRef.current !== null) {
-        window.clearTimeout(maxSpeechTimerRef.current);
-        maxSpeechTimerRef.current = null;
-      }
-
-      const finalTranscript = finalTranscriptRef.current.trim();
-      if (finalTranscript && !utteranceHandledRef.current) {
-        utteranceHandledRef.current = true;
-        setVoiceState("transcribing");
-        if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
-        debounceRef.current = window.setTimeout(() => {
-          setLiveTranscript("");
-          finalTranscriptRef.current = "";
-          void handleResponse(finalTranscript);
-        }, 300);
-        return;
-      }
-
-      if (!finalTranscript && !utteranceHandledRef.current && capturedAudioRef.current && patientId) {
-        setVoiceState("transcribing");
-        try {
-          const sttStartedAt = performance.now();
-          const stt = await api.transcribeCompanionAudio(patientId, capturedAudioRef.current, inputLanguage);
-          setLatencyMetrics((prev) => ({
-            ...prev,
-            stt_ms: Math.round(performance.now() - sttStartedAt),
-          }));
-          if (stt.transcript.trim()) {
-            utteranceHandledRef.current = true;
-            finalTranscriptRef.current = "";
-            setLiveTranscript(stt.transcript.trim());
-            void handleResponse(stt.transcript.trim());
-            return;
-          }
-        } catch {
-          // falls through to visible hint.
-        }
-      }
-
-      if (!utteranceHandledRef.current) {
-        setLiveTranscript("");
-        setInterimTranscript("");
-        finalTranscriptRef.current = "";
-        setPermissionError("I couldn't capture voice clearly. Please try again.");
-        setVoiceState("idle");
-      }
-      })();
+      const manualStop = manualStopRequestedRef.current || userStoppedListeningRef.current;
+      manualStopRequestedRef.current = false;
+      userStoppedListeningRef.current = false;
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        void finalizeSpeechTurn(manualStop);
+      }, 300);
     };
 
     recognitionInstance.onerror = (event: any) => {
+      const manualStop = manualStopRequestedRef.current || userStoppedListeningRef.current;
+      if (manualStop && (event.error === "aborted" || event.error === "no-speech")) {
+        manualStopRequestedRef.current = false;
+        userStoppedListeningRef.current = false;
+        clearSpeechTimers();
+        void stopRecordingCapture();
+        resetCapturedText();
+        setPermissionError(null);
+        setShowRetryChips(false);
+        setVoiceState("idle");
+        return;
+      }
+
       clearSpeechTimers();
       void stopRecordingCapture();
       setVoiceState("idle");
@@ -672,13 +1094,18 @@ export function CompanionInterface() {
         setPermissionError("Please allow microphone access to talk to your companion.");
         setShowTextInput(true);
       } else if (event.error === "no-speech") {
-        const isEdge = typeof navigator !== "undefined" && navigator.userAgent.includes("Edg/");
-        setPermissionError(
-          isEdge
-            ? "I couldn't capture voice here. Edge speech recognition can be unreliable; please try typed input or Chrome."
-            : "I didn't hear anything. Please try again."
-        );
-        setShowTextInput(true);
+        if (autoResumeListeningRef.current && noSpeechRetryCountRef.current < 1) {
+          noSpeechRetryCountRef.current += 1;
+          setPermissionError("Didn't catch that clearly. Listening again...");
+          setVoiceState("auto_relisten");
+          window.setTimeout(() => {
+            setVoiceState("idle");
+            startVoiceCaptureSession();
+          }, 350);
+          return;
+        }
+        setPermissionError("I didn't hear anything. Please try again.");
+        setShowRetryChips(true);
       } else {
         setPermissionError("Voice not available. You can type instead.");
         setShowTextInput(true);
@@ -690,6 +1117,9 @@ export function CompanionInterface() {
     return () => {
       clearSpeechTimers();
       void stopRecordingCapture();
+      if (transcriptHintTimerRef.current !== null) {
+        window.clearTimeout(transcriptHintTimerRef.current);
+      }
       recognitionInstance.onstart = null;
       recognitionInstance.onresult = null;
       recognitionInstance.onend = null;
@@ -699,15 +1129,9 @@ export function CompanionInterface() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, inputLanguage);
-    if (recognitionRef.current) {
-      recognitionRef.current.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
-    }
-  }, [inputLanguage]);
-
-  useEffect(() => {
     return () => {
       if (escalationTimeoutRef.current !== null) window.clearTimeout(escalationTimeoutRef.current);
+      if (transcriptHintTimerRef.current !== null) window.clearTimeout(transcriptHintTimerRef.current);
       void stopRecordingCapture();
       if (audioElementRef.current) {
         audioElementRef.current.pause();
@@ -723,44 +1147,51 @@ export function CompanionInterface() {
   }, []);
 
   const handleVoiceClick = () => {
-    if (voiceState !== "idle" || !recognitionRef.current) return;
-    void (async () => {
-      try {
-        await startRecordingCapture();
-        recognitionRef.current.start();
-        maxSpeechTimerRef.current = window.setTimeout(() => {
-          recognitionRef.current?.stop();
-        }, 45000);
-      } catch {
-        setPermissionError("Voice not available. You can type instead.");
-        setShowTextInput(true);
-      }
-    })();
+    if (voiceStateRef.current === "listening") {
+      autoResumeListeningRef.current = false;
+      userStoppedListeningRef.current = true;
+      manualStopRequestedRef.current = true;
+      setVoiceState("finalizing");
+      recognitionRef.current?.stop();
+      return;
+    }
+    if (voiceStateRef.current !== "idle") {
+      return;
+    }
+    autoResumeListeningRef.current = true;
+    noSpeechRetryCountRef.current = 0;
+    shortListenRestartCountRef.current = 0;
+    startVoiceCaptureSession();
   };
 
   const handleTextSubmit = () => {
     if (!textInput.trim()) return;
+    autoResumeListeningRef.current = false;
     setVoiceState("thinking");
     const content = textInput.trim();
     setTextInput("");
-    void handleResponse(content);
+    void handleResponse(content, "text");
   };
 
   const handleCallFamily = () => {
-    void handleResponse("Please help me contact my family.");
+    autoResumeListeningRef.current = false;
+    void handleResponse("Please help me contact my family.", "action");
   };
 
   const handleHelp = () => {
-    void handleResponse("I need help right now.");
+    autoResumeListeningRef.current = false;
+    void handleResponse("I need help right now.", "action");
   };
 
   const handleRemindLater = () => {
-    void handleResponse("Please remind me later.");
+    autoResumeListeningRef.current = false;
+    void handleResponse("Please remind me later.", "action");
   };
 
   const handleNewsCardClick = (headline: string) => {
     setShowNewsPanel(false);
-    void handleResponse(`Tell me more about: ${headline}`);
+    autoResumeListeningRef.current = false;
+    void handleResponse(`Tell me more about: ${headline}`, "action");
   };
 
   const toggleNewsCategory = (category: string) => {
@@ -777,12 +1208,11 @@ export function CompanionInterface() {
     setSavingPreferences(true);
     setApiError(null);
     try {
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, settingsLanguage);
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, "en");
       localStorage.setItem(TONE_STORAGE_KEY, tonePreference);
       localStorage.setItem(VOICE_SPEED_STORAGE_KEY, voiceSpeed);
       localStorage.setItem(NEWS_CATEGORIES_STORAGE_KEY, JSON.stringify(newsCategories));
-      setInputLanguage(settingsLanguage);
-      await api.updateCompanionPreferences(patientId, { tone: tonePreference, language: settingsLanguage });
+      await api.updateCompanionPreferences(patientId, { tone: tonePreference, language: "en" });
       setSettingsOpen(false);
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Failed to save preferences");
@@ -850,11 +1280,6 @@ export function CompanionInterface() {
               {!showTextInput ? (
                 <VoiceButton
                   state={voiceState}
-                  language={inputLanguage}
-                  onLanguageChange={(language) => {
-                    setInputLanguage(language);
-                    setSettingsLanguage(language);
-                  }}
                   onClick={handleVoiceClick}
                 />
               ) : (
@@ -897,11 +1322,27 @@ export function CompanionInterface() {
               )}
             </div>
 
+            {voiceState !== "idle" && (
+              <div className="rounded-full border border-[#E85D2A]/30 bg-white px-4 py-2 text-sm font-bold tracking-wider uppercase text-[#83311A] transition-all duration-300">
+                {voiceState === "listening" && "Listening..."}
+                {voiceState === "finalizing" && "Processing what I heard..."}
+                {voiceState === "transcribing" && "Processing what I heard..."}
+                {voiceState === "thinking" && "Responding..."}
+                {voiceState === "speaking" && "Responding..."}
+                {voiceState === "auto_relisten" && "Listening again..."}
+              </div>
+            )}
+
             {voiceState === "listening" && (liveTranscript || interimTranscript) && (
               <div className="w-full max-w-xl">
                 <div className="mx-auto rounded-2xl border border-[#E85D2A]/20 bg-white px-4 py-3 text-sm lg:text-base text-[#7A6A63] italic animate-pulse transition-all duration-300">
                   {liveTranscript || interimTranscript}
                 </div>
+              </div>
+            )}
+            {heardTranscriptHint && (
+              <div className="rounded-2xl border border-[#E85D2A]/20 bg-white px-4 py-2 text-sm font-semibold text-[#7A6A63] transition-all duration-300">
+                {heardTranscriptHint}
               </div>
             )}
             {isReplySpeaking && (
@@ -914,6 +1355,35 @@ export function CompanionInterface() {
               {permissionError && (
                 <div className="bg-orange-50 border-2 border-[#E85D2A] rounded-2xl px-6 py-4 shadow-sm">
                   <p className="text-sm lg:text-base text-center text-[#2A2B3D] font-semibold">{permissionError}</p>
+                </div>
+              )}
+              {showRetryChips && (
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    aria-label="Repeat voice capture"
+                    onClick={() => {
+                      setPermissionError(null);
+                      setShowRetryChips(false);
+                      setShowTextInput(false);
+                      autoResumeListeningRef.current = true;
+                      startVoiceCaptureSession();
+                    }}
+                    className="rounded-full border border-[#E85D2A]/30 bg-white px-5 py-2 text-sm font-bold uppercase tracking-wider text-[#83311A] hover:border-[#E85D2A] transition-all duration-300"
+                  >
+                    Repeat
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Switch to typed input"
+                    onClick={() => {
+                      setShowTextInput(true);
+                      setShowRetryChips(false);
+                    }}
+                    className="rounded-full border border-[#E85D2A]/30 bg-white px-5 py-2 text-sm font-bold uppercase tracking-wider text-[#83311A] hover:border-[#E85D2A] transition-all duration-300"
+                  >
+                    Type Instead
+                  </button>
                 </div>
               )}
               {apiError && (
@@ -1040,27 +1510,6 @@ export function CompanionInterface() {
                     />
                     {tone.label}
                   </label>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[#E85D2A]/15 bg-[#F5F1EA] p-4">
-              <h4 className="text-sm font-bold tracking-tight uppercase text-[#2A2B3D]">Language Preference</h4>
-              <div className="mt-3 flex items-center gap-3">
-                {(["en", "hi"] as const).map((language) => (
-                  <button
-                    key={`settings-language-${language}`}
-                    type="button"
-                    aria-label={`Set language ${language === "en" ? "English" : "Hindi"}`}
-                    onClick={() => setSettingsLanguage(language)}
-                    className={`rounded-full px-4 py-2 text-sm font-bold tracking-wider uppercase transition-all duration-300 ${
-                      settingsLanguage === language
-                        ? "bg-[#E85D2A] text-white"
-                        : "bg-white text-[#83311A] border border-[#E85D2A]/25"
-                    }`}
-                  >
-                    {language === "en" ? "ENGLISH" : "हिंदी"}
-                  </button>
                 ))}
               </div>
             </section>

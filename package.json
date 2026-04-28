@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:stt": "python backend/voice_services/stt_service.py",
+    "dev:voice": "node scripts/dev-voice.mjs",
+    "voice:doctor": "npm --prefix backend run voice:doctor"
+  },
   "dependencies": {
     "twilio": "^6.0.0"
   }

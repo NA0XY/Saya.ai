@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
 
-type VoiceState = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
+type VoiceState =
+  | "idle"
+  | "listening"
+  | "finalizing"
+  | "transcribing"
+  | "thinking"
+  | "speaking"
+  | "auto_relisten";
 
 type CompanionAvatarProps = {
   mood: MoodType;
@@ -18,7 +25,8 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
   useEffect(() => {
     if (mood === displayedMood) return;
 
-    setPrevMood(displayedMood);
+    const previousMood = displayedMood;
+    setPrevMood(previousMood);
     setDisplayedMood(mood);
     setIsCrossfading(true);
     setCurrentVisible(false);
@@ -37,7 +45,7 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
       window.cancelAnimationFrame(startFrame);
       window.clearTimeout(timer);
     };
-  }, [displayedMood, mood]);
+  }, [mood]);
 
   useEffect(() => {
     setCurrentImageFailed(false);

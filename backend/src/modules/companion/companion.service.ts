@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import { env } from '../../config/env';
+import { logger } from '../../config/logger';
 import { supabase } from '../../config/supabase';
 import { ApiError } from '../../utils/apiError';
 import { withTimeout } from '../../utils/timeout';
@@ -15,6 +16,16 @@ import { memoryService } from './memory.service';
 import { sentimentService } from './sentiment.service';
 
 const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+const DEVANAGARI_REGEX = /[\u0900-\u097F]/;
+const ENGLISH_ONLY_FALLBACK =
+  "I am here with you. I will continue in English so I can support you clearly. How are you feeling right now?";
+const COMPANION_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'] as const;
+const MAX_HISTORY_MESSAGES = 12;
+const MAX_HISTORY_CHARS = 3800;
+const MAX_MEMORY_ITEMS = 18;
+const MAX_MEMORY_VALUE_CHARS = 160;
+
+type PromptMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 type ChatContext = {
   patient: Patient;
@@ -22,6 +33,120 @@ type ChatContext = {
   history: Array<{ role: string; content: string }>;
   system: string;
 };
+
+function clampText(value: string, maxChars: number): string {
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxChars - 1)).trim()}…`;
+}
+
+function compactPromptHistory(history: Array<{ role: string; content: string }>): Array<{ role: string; content: string }> {
+  const cleaned = history
+    .filter((message) => message.role === 'user' || message.role === 'assistant')
+    .map((message) => ({
+      role: message.role,
+      content: clampText(memoryService.stripControlTags(message.content ?? ''), 320)
+    }))
+    .filter((message) => Boolean(message.content))
+    .slice(-MAX_HISTORY_MESSAGES);
+
+  let totalChars = cleaned.reduce((sum, message) => sum + message.content.length, 0);
+  if (totalChars <= MAX_HISTORY_CHARS) return cleaned;
+
+  const compacted: Array<{ role: string; content: string }> = [];
+  for (let index = cleaned.length - 1; index >= 0; index -= 1) {
+    const entry = cleaned[index];
+    if (totalChars <= MAX_HISTORY_CHARS) {
+      compacted.unshift(entry);
+      continue;
+    }
+    const remaining = Math.max(80, entry.content.length - (totalChars - MAX_HISTORY_CHARS));
+    compacted.unshift({ ...entry, content: clampText(entry.content, remaining) });
+    totalChars = compacted.reduce((sum, message) => sum + message.content.length, 0);
+  }
+  return compacted;
+}
+
+function compactPromptMemories(memories: PatientMemory[]): PatientMemory[] {
+  return memories
+    .filter((memory) => !memory.memory_key.startsWith('conversation_note'))
+    .slice(-MAX_MEMORY_ITEMS)
+    .map((memory) => ({
+      ...memory,
+      memory_value: clampText(memory.memory_value ?? '', MAX_MEMORY_VALUE_CHARS)
+    }));
+}
+
+function buildPromptMessages(context: ChatContext, userMessage: string): PromptMessage[] {
+  return [
+    { role: 'system', content: context.system },
+    ...context.history.map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content })),
+    { role: 'user', content: clampText(userMessage, 500) }
+  ];
+}
+
+async function createGroqCompletion(messages: PromptMessage[]): Promise<any> {
+  let lastError: unknown = null;
+  for (const model of COMPANION_MODELS) {
+    try {
+      const completion = await withTimeout(
+        groq.chat.completions.create({
+          model,
+          temperature: 0.45,
+          max_tokens: 180,
+          messages
+        }),
+        env.GROQ_TIMEOUT_MS,
+        'GROQ_COMPANION_TIMEOUT',
+        'Groq companion response timed out'
+      );
+      return completion;
+    } catch (error) {
+      lastError = error;
+      logger.warn('[COMPANION] Groq completion attempt failed', {
+        model,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  throw ApiError.badGateway(
+    'Groq companion response failed',
+    { error: lastError instanceof Error ? lastError.message : String(lastError) },
+    'GROQ_COMPANION_PROVIDER_ERROR'
+  );
+}
+
+async function createGroqStream(messages: PromptMessage[]): Promise<AsyncIterable<any>> {
+  let lastError: unknown = null;
+  for (const model of COMPANION_MODELS) {
+    try {
+      const stream = await withTimeout(
+        (groq.chat.completions.create as any)({
+          model,
+          temperature: 0.45,
+          max_tokens: 180,
+          stream: true,
+          messages
+        }),
+        env.GROQ_TIMEOUT_MS,
+        'GROQ_COMPANION_STREAM_TIMEOUT',
+        'Groq companion stream timed out'
+      );
+      return stream as AsyncIterable<any>;
+    } catch (error) {
+      lastError = error;
+      logger.warn('[COMPANION] Groq stream attempt failed', {
+        model,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  throw ApiError.badGateway(
+    'Groq companion stream failed',
+    { error: lastError instanceof Error ? lastError.message : String(lastError) },
+    'GROQ_COMPANION_STREAM_PROVIDER_ERROR'
+  );
+}
 
 async function prepareChatContext(request: ChatRequest, caregiverId: string): Promise<ChatContext> {
   await patientService.assertCaregiverOwnsPatient(request.patient_id, caregiverId);
@@ -40,19 +165,20 @@ async function prepareChatContext(request: ChatRequest, caregiverId: string): Pr
     id: `vault-${index + 1}`,
     patient_id: patient.id,
     memory_key: `vault_match_${index + 1}`,
-    memory_value: match.content,
+    memory_value: clampText(match.content, 180),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }));
 
+  const promptMemories = compactPromptMemories([...memories, ...semanticPromptMemories]);
   const system = buildCompanionSystemPrompt(
     patient,
-    [...memories, ...semanticPromptMemories],
-    recentNews,
+    promptMemories,
+    recentNews.slice(0, 3),
     patient.companion_tone
   );
 
-  return { patient, contacts, history, system };
+  return { patient, contacts, history: compactPromptHistory(history), system };
 }
 
 async function persistChatOutcome(
@@ -63,7 +189,8 @@ async function persistChatOutcome(
 ): Promise<ChatResponse> {
   const familyAction = memoryService.extractFamilyActionRequest(rawReply);
   const memoriesUpdated = await memoryService.extractAndSaveMemories(context.patient.id, rawReply);
-  const cleanReply = memoryService.stripControlTags(rawReply);
+  const cleanReplyRaw = memoryService.stripControlTags(rawReply);
+  const cleanReply = DEVANAGARI_REGEX.test(cleanReplyRaw) ? ENGLISH_ONLY_FALLBACK : cleanReplyRaw;
 
   const sentiment = await sentimentService.analyzeSentiment(request.message, request.language);
   const { error: messageInsertError } = await supabase
@@ -106,28 +233,9 @@ export const companionService = {
   async chat(request: ChatRequest, caregiverId: string): Promise<ChatResponse> {
     const chatStartedAt = Date.now();
     const context = await prepareChatContext(request, caregiverId);
+    const promptMessages = buildPromptMessages(context, request.message);
 
-    const completion = await withTimeout(
-      groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.6,
-        max_tokens: 500,
-        messages: [
-          { role: 'system', content: context.system },
-          ...context.history.map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content })),
-          { role: 'user', content: request.message }
-        ]
-      }).catch((error: unknown) => {
-        throw ApiError.badGateway(
-          'Groq companion response failed',
-          { error: error instanceof Error ? error.message : String(error) },
-          'GROQ_COMPANION_PROVIDER_ERROR'
-        );
-      }),
-      env.GROQ_TIMEOUT_MS,
-      'GROQ_COMPANION_TIMEOUT',
-      'Groq companion response timed out'
-    );
+    const completion = await createGroqCompletion(promptMessages);
 
     const rawReply = completion.choices[0]?.message?.content;
     if (!rawReply) throw ApiError.badGateway('Groq returned an empty companion reply', undefined, 'GROQ_EMPTY_COMPANION_REPLY');
@@ -148,33 +256,12 @@ export const companionService = {
   ): Promise<ChatResponse> {
     const chatStartedAt = Date.now();
     const context = await prepareChatContext(request, caregiverId);
+    const promptMessages = buildPromptMessages(context, request.message);
     let firstTokenTimestamp: number | null = null;
 
-    const stream = await withTimeout(
-      (groq.chat.completions.create as any)({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.6,
-        max_tokens: 500,
-        stream: true,
-        messages: [
-          { role: 'system', content: context.system },
-          ...context.history.map((message) => ({ role: message.role as 'user' | 'assistant', content: message.content })),
-          { role: 'user', content: request.message }
-        ]
-      }).catch((error: unknown) => {
-        throw ApiError.badGateway(
-          'Groq companion stream failed',
-          { error: error instanceof Error ? error.message : String(error) },
-          'GROQ_COMPANION_STREAM_PROVIDER_ERROR'
-        );
-      }),
-      env.GROQ_TIMEOUT_MS,
-      'GROQ_COMPANION_STREAM_TIMEOUT',
-      'Groq companion stream timed out'
-    );
-
-    const tokenStream = stream as AsyncIterable<any>;
+    const tokenStream = await createGroqStream(promptMessages);
     let rawReply = '';
+    let languageGuardTriggered = false;
     for await (const chunk of tokenStream) {
       const token = chunk?.choices?.[0]?.delta?.content ?? '';
       if (!token) continue;
@@ -182,7 +269,14 @@ export const companionService = {
       if (!firstTokenTimestamp) {
         firstTokenTimestamp = Date.now();
       }
-      emit('assistant_token', { token });
+      if (DEVANAGARI_REGEX.test(token)) {
+        if (!languageGuardTriggered) {
+          languageGuardTriggered = true;
+          emit('assistant_token', { token: ENGLISH_ONLY_FALLBACK });
+        }
+        continue;
+      }
+      if (!languageGuardTriggered) emit('assistant_token', { token });
     }
 
     if (!rawReply.trim()) {

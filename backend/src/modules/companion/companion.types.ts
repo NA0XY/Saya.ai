@@ -46,8 +46,11 @@ export interface SttTranscriptionRequest {
 export interface SttTranscriptionResponse {
   transcript: string;
   language: Language;
-  provider: 'groq-whisper';
-  duration_ms: number;
+  engine: 'groq-whisper' | 'local-faster-whisper';
+  stt_ms: number;
+  audio_ms?: number;
+  confidence_proxy: number;
+  quality_score: number;
 }
 
 export interface MemoryEntry {
