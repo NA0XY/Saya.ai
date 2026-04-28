@@ -7,16 +7,52 @@ import { MedicationScheduler } from "./dashboard/MedicationScheduler";
 import { UpcomingCalls } from "./dashboard/UpcomingCalls";
 import { LiveCallDemo } from "./dashboard/LiveCallDemo";
 import { AlertFeed } from "./dashboard/AlertFeed";
+import { api, type AlertDto, type HealthVitalsDto, type SafetyStatusDto, type UserProfile } from "../lib/api";
 
 export function DashboardPage() {
   const pageRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [safetyStatuses, setSafetyStatuses] = useState<SafetyStatusDto[]>([]);
+  const [alerts, setAlerts] = useState<AlertDto[]>([]);
+  const [vitals, setVitals] = useState<HealthVitalsDto | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(true);
 
   // Initialize smooth scroll
   useLenisScroll();
 
   // Initialize cloud drift animations
   useCloudDrift(pageRef);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDashboard() {
+      setIsSyncing(true);
+      setApiError(null);
+      try {
+        const [profileData, safetyData, alertsData, vitalsData] = await Promise.all([
+          api.profile(),
+          api.safetyStatus(),
+          api.alerts(),
+          api.healthVitals("7d")
+        ]);
+        if (cancelled) return;
+        setProfile(profileData);
+        setSafetyStatuses(safetyData);
+        setAlerts(alertsData);
+        setVitals(vitalsData);
+      } catch (error) {
+        if (!cancelled) setApiError(error instanceof Error ? error.message : "Dashboard sync failed");
+      } finally {
+        if (!cancelled) setIsSyncing(false);
+      }
+    }
+    loadDashboard();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Register GSAP plugins
   useEffect(() => {
@@ -88,27 +124,27 @@ export function DashboardPage() {
                   <div className="flex-1">
                     <div className="flex flex-col gap-4 md:gap-6">
                       <div className="flex flex-col md:flex-row md:items-center gap-4">
-                        <h1 className="text-4xl md:text-5xl font-bold text-[#83311A]">Rajesh Kumar</h1>
+                        <h1 className="text-4xl md:text-5xl font-bold text-[#83311A]">{profile?.name ?? "Rajesh Kumar"}</h1>
                         <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-widest border border-green-200 w-fit">
-                          Stable Condition
+                          {vitals?.vitalsStatus === "critical" ? "Needs Attention" : vitals?.vitalsStatus === "warning" ? "Watch Closely" : "Stable Condition"}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
                         <div className="space-y-2">
                           <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Age</span>
-                          <p className="text-[#83311A] font-bold text-lg">72 Years</p>
+                          <p className="text-[#83311A] font-bold text-lg">{profile ? "Caregiver" : "72 Years"}</p>
                         </div>
                         <div className="space-y-2">
                           <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Blood Group</span>
-                          <p className="text-[#83311A] font-bold text-lg">O Positive</p>
+                          <p className="text-[#83311A] font-bold text-lg">{profile?.role ?? "O Positive"}</p>
                         </div>
                         <div className="space-y-2">
                           <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Location</span>
-                          <p className="text-[#83311A] font-bold text-lg">Mumbai, MH</p>
+                          <p className="text-[#83311A] font-bold text-lg">{profile?.email ?? "Mumbai, MH"}</p>
                         </div>
                         <div className="space-y-2">
                           <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Last Check-in</span>
-                          <p className="text-[#83311A] font-bold text-lg">10:45 AM Today</p>
+                          <p className="text-[#83311A] font-bold text-lg">{isSyncing ? "Syncing" : apiError ? "Demo Mode" : "Live"}</p>
                         </div>
                       </div>
                     </div>
@@ -129,7 +165,7 @@ export function DashboardPage() {
                 
                 {/* Safety Status - Full Width */}
                 <div className="dashboard-card-wrapper">
-                  <SafetyStatus />
+                  <SafetyStatus statuses={safetyStatuses} isLoading={isSyncing} error={apiError} />
                 </div>
 
                 {/* Two Column Layout for Medication & Calls */}
@@ -145,7 +181,7 @@ export function DashboardPage() {
                 {/* Alert Feed and Quick Actions - Better Distribution */}
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 md:gap-10">
                   <div className="xl:col-span-2 dashboard-card-wrapper">
-                    <AlertFeed />
+                    <AlertFeed alerts={alerts} error={apiError} />
                   </div>
                   <div className="xl:col-span-2 dashboard-card-wrapper">
                     <LiveCallDemo />

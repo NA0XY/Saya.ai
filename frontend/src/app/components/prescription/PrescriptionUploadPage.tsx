@@ -5,6 +5,7 @@ import { UploadZone } from "./UploadZone";
 import { VerificationForm } from "./VerificationForm";
 import { WarningCards } from "./WarningCards";
 import { SuccessMessage } from "./SuccessMessage";
+import { api } from "../../lib/api";
 
 export type Medicine = {
   id: string;
@@ -19,11 +20,17 @@ export function PrescriptionUploadPage() {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
 
-  const handleImageUpload = (imageUrl: string) => {
+  const handleImageUpload = async (imageUrl: string, file: File) => {
     setUploadedImage(imageUrl);
+    setExtractError(null);
 
-    setTimeout(() => {
+    try {
+      const result = await api.extractMedicines(file);
+      setMedicines(result.medicines);
+    } catch (error) {
+      setExtractError(error instanceof Error ? error.message : "Prescription extraction failed");
       setMedicines([
         {
           id: "1",
@@ -47,7 +54,7 @@ export function PrescriptionUploadPage() {
           confidence: "low"
         }
       ]);
-    }, 1500);
+    }
   };
 
   const handleMedicineUpdate = (id: string, field: keyof Medicine, value: string) => {
@@ -103,6 +110,11 @@ export function PrescriptionUploadPage() {
                 medicines={medicines}
                 onMedicineUpdate={handleMedicineUpdate}
               />
+              {extractError && (
+                <div className="max-w-[1200px] w-full -mt-16 mb-10 rounded-xl border border-[#E85D2A]/20 bg-[#E85D2A]/10 px-5 py-4 text-sm font-semibold text-[#83311A]">
+                  Backend OCR unavailable: {extractError}. Showing demo extraction so verification can continue.
+                </div>
+              )}
 
               {medicines.length > 0 && !isConfirmed && (
                 <div className="max-w-[1200px] w-full mt-12 sticky bottom-0 bg-[#F5F1EA]/95 backdrop-blur-sm border-t border-gray-300 py-6 px-8 rounded-t-2xl shadow-2xl">

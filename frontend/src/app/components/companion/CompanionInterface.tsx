@@ -4,6 +4,7 @@ import { DottedBackground } from "../DottedBackground";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
 import { QuickActions } from "./QuickActions";
+import { api } from "../../lib/api";
 
 type CompanionMood = "neutral" | "happy" | "concerned";
 type VoiceState = "idle" | "listening" | "processing";
@@ -16,6 +17,7 @@ export function CompanionInterface() {
   const [response, setResponse] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
 
@@ -49,8 +51,7 @@ export function CompanionInterface() {
           setVoiceState("processing");
 
           setTimeout(() => {
-            handleResponse(transcription);
-            setVoiceState("idle");
+            handleResponse(transcription).finally(() => setVoiceState("idle"));
           }, 1500);
         } else {
           setVoiceState("idle");
@@ -79,7 +80,20 @@ export function CompanionInterface() {
     }
   }, [transcription]);
 
-  const handleResponse = (userInput: string) => {
+  const handleResponse = async (userInput: string) => {
+    setApiError(null);
+    try {
+      const result = await api.companionChat({
+        message: userInput,
+        context: { lastMood: mood }
+      });
+      setResponse(result.response);
+      setMood(result.mood);
+      return;
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Companion backend unavailable");
+    }
+
     const lowerInput = userInput.toLowerCase();
 
     if (lowerInput.includes("tired") || lowerInput.includes("sleepy")) {
@@ -115,9 +129,10 @@ export function CompanionInterface() {
       setVoiceState("processing");
 
       setTimeout(() => {
-        handleResponse(textInput);
-        setVoiceState("idle");
-        setTextInput("");
+        handleResponse(textInput).finally(() => {
+          setVoiceState("idle");
+          setTextInput("");
+        });
       }, 1500);
     }
   };
@@ -179,6 +194,14 @@ export function CompanionInterface() {
               <div className="bg-orange-100/80 border-2 border-[#E85D2A] rounded-3xl px-8 py-6 backdrop-blur-sm">
                 <p className="text-lg text-center text-gray-800 font-semibold">
                   {permissionError}
+                </p>
+              </div>
+            )}
+
+            {apiError && (
+              <div className="bg-orange-100/80 border-2 border-[#E85D2A]/40 rounded-3xl px-8 py-5 backdrop-blur-sm">
+                <p className="text-base text-center text-gray-800 font-semibold">
+                  Backend companion unavailable: {apiError}. Using local fallback response.
                 </p>
               </div>
             )}

@@ -1,17 +1,33 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { api } from "../../lib/api";
 
 export function MedicationScheduler() {
   const [medicineName, setMedicineName] = useState("");
   const [time, setTime] = useState("");
   const [customMessage, setCustomMessage] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [isScheduling, setIsScheduling] = useState(false);
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (medicineName && time) {
-      alert(`Scheduled: ${medicineName} at ${time}`);
-      setMedicineName("");
-      setTime("");
-      setCustomMessage("");
+      setIsScheduling(true);
+      setStatus(null);
+      try {
+        const result = await api.scheduleMedication({
+          drugName: medicineName,
+          time,
+          customMessage: customMessage || undefined
+        });
+        setStatus(`Scheduled ${medicineName} (${result.status})`);
+        setMedicineName("");
+        setTime("");
+        setCustomMessage("");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Unable to schedule medication");
+      } finally {
+        setIsScheduling(false);
+      }
     }
   };
 
@@ -80,15 +96,15 @@ export function MedicationScheduler() {
               <div className="flex items-center justify-between gap-4 pt-2">
                 <div className="flex items-center gap-2 text-xs text-gray-500 font-bold uppercase tracking-widest">
                   <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>AI Personalized</span>
+                  <span>{status ?? "AI Personalized"}</span>
                 </div>
 
                 <button
                   onClick={handleSchedule}
-                  disabled={!medicineName || !time}
+                  disabled={!medicineName || !time || isScheduling}
                   className="px-6 py-2.5 bg-[#E85D2A] text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-[#83311A] transition-all shadow-md disabled:opacity-40 transform hover:-translate-y-0.5"
                 >
-                  Schedule Call
+                  {isScheduling ? "Scheduling" : "Schedule Call"}
                 </button>
               </div>
             </div>

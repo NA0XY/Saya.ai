@@ -16,6 +16,7 @@ import { patientRepository } from '../patients/patient.repository';
 import { patientService } from '../patients/patient.service';
 import { companionService } from '../companion/companion.service';
 import type { SentimentTag } from '../../types/common';
+import { toE164India } from '../../utils/phone';
 import type {
   AlertDto,
   CompanionChatDto,
@@ -171,6 +172,25 @@ export const frontendContractService = {
         companion_tone: input.personality,
         language_preference: input.language === 'hindi' ? 'hi' : 'en'
       });
+    } else {
+      const firstContact = input.contacts[0];
+      const patient = await patientRepository.create({
+        caregiver_id: userId,
+        full_name: 'Primary Elder',
+        phone: toE164India(firstContact.phone),
+        date_of_birth: null,
+        companion_tone: input.personality,
+        language_preference: input.language === 'hindi' ? 'hi' : 'en'
+      });
+      for (const contact of input.contacts) {
+        await patientRepository.createContact({
+          patient_id: patient.id,
+          name: contact.name,
+          phone: toE164India(contact.phone),
+          relationship: 'family',
+          can_receive_escalation_sms: true
+        });
+      }
     }
     return { status: 'success' };
   },

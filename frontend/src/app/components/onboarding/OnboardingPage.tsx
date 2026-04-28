@@ -5,6 +5,7 @@ import { ContactControl } from "./ContactControl";
 import { PersonalityConfig } from "./PersonalityConfig";
 import { LanguageSetup } from "./LanguageSetup";
 import { SuccessScreen } from "./SuccessScreen";
+import { api } from "../../lib/api";
 
 export type OnboardingData = {
   contacts: Array<{ name: string; phone: string }>;
@@ -16,6 +17,7 @@ export function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [data, setData] = useState<OnboardingData>({
     contacts: [],
     personality: null,
@@ -32,8 +34,23 @@ export function OnboardingPage() {
     setStep(3);
   };
 
-  const handleLanguageFinish = (language: "english" | "hindi") => {
-    setData({ ...data, language });
+  const handleLanguageFinish = async (language: "english" | "hindi") => {
+    const nextData = { ...data, language };
+    setData(nextData);
+    setSubmitError(null);
+
+    if (nextData.personality) {
+      try {
+        await api.submitOnboarding({
+          contacts: nextData.contacts,
+          personality: nextData.personality,
+          language
+        });
+      } catch (error) {
+        setSubmitError(error instanceof Error ? error.message : "Onboarding sync failed");
+      }
+    }
+
     setShowSuccess(true);
     setTimeout(() => {
       navigate("/dashboard");
@@ -59,6 +76,11 @@ export function OnboardingPage() {
         <div className="flex items-center justify-center px-20 py-16">
           <div className="max-w-[1200px] w-full grid grid-cols-[52%_48%] gap-16 items-center min-h-[600px]">
             <div className="transition-all duration-500 ease-in-out">
+              {submitError && (
+                <div className="mb-6 rounded-xl border border-[#E85D2A]/20 bg-[#E85D2A]/10 px-4 py-3 text-sm font-semibold text-[#83311A]">
+                  Backend onboarding sync unavailable: {submitError}
+                </div>
+              )}
               {step === 1 && <ContactControl onNext={handleContactsNext} initialContacts={data.contacts} />}
               {step === 2 && <PersonalityConfig onNext={handlePersonalityNext} initialPersonality={data.personality} />}
               {step === 3 && <LanguageSetup onFinish={handleLanguageFinish} initialLanguage={data.language} />}

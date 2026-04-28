@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export function UploadZone({ onImageUpload }: { onImageUpload: (imageUrl: string) => void }) {
+export function UploadZone({ onImageUpload }: { onImageUpload: (imageUrl: string, file: File) => void }) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -8,7 +8,7 @@ export function UploadZone({ onImageUpload }: { onImageUpload: (imageUrl: string
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        onImageUpload(reader.result as string);
+        onImageUpload(reader.result as string, file);
       };
       reader.readAsDataURL(file);
     }
@@ -31,7 +31,7 @@ export function UploadZone({ onImageUpload }: { onImageUpload: (imageUrl: string
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        onImageUpload(reader.result as string);
+        onImageUpload(reader.result as string, file);
       };
       reader.readAsDataURL(file);
     }

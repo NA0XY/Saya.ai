@@ -1,36 +1,59 @@
-export function AlertFeed() {
-  const alerts = [
+import type { AlertDto } from "../../lib/api";
+
+type AlertFeedProps = {
+  alerts?: AlertDto[];
+  error?: string | null;
+};
+
+const fallbackAlerts: AlertDto[] = [
     {
+      id: "demo-1",
+      type: "medication",
       message: "Medicine not confirmed",
-      timestamp: "2 hours ago",
-      severity: "high",
-      icon: "💊"
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      severity: "high"
     },
     {
+      id: "demo-2",
+      type: "health",
       message: "Low mood detected in conversation",
-      timestamp: "5 hours ago",
-      severity: "medium",
-      icon: "😔"
+      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+      severity: "medium"
     },
     {
+      id: "demo-3",
+      type: "safety",
       message: "Call not answered at scheduled time",
-      timestamp: "Yesterday, 8:00 PM",
-      severity: "medium",
-      icon: "📞"
+      timestamp: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+      severity: "medium"
     },
     {
+      id: "demo-4",
+      type: "health",
       message: "Blood pressure reading normal",
-      timestamp: "Yesterday, 2:00 PM",
-      severity: "low",
-      icon: "❤️"
-    },
-    {
-      message: "Daily check-in completed",
-      timestamp: "2 days ago",
-      severity: "low",
-      icon: "✅"
+      timestamp: new Date(Date.now() - 32 * 60 * 60 * 1000).toISOString(),
+      severity: "low"
     }
   ];
+
+function formatAlertTime(timestamp: string) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return timestamp;
+  const diffMs = Date.now() - date.getTime();
+  const hours = Math.max(1, Math.round(diffMs / (60 * 60 * 1000)));
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function getAlertIcon(type: AlertDto["type"]) {
+  if (type === "medication") return "💊";
+  if (type === "health") return "❤️";
+  return "⚠️";
+}
+
+export function AlertFeed({ alerts, error = null }: AlertFeedProps) {
+  const visibleAlerts = alerts?.length ? alerts : fallbackAlerts;
 
   const getSeverityStyle = (severity: string) => {
     switch (severity) {
@@ -52,16 +75,21 @@ export function AlertFeed() {
           Recent Alerts
         </h2>
         <button className="text-sm font-bold uppercase tracking-widest text-[#E85D2A] hover:underline px-4 py-2.5 bg-[#E85D2A]/5 rounded-lg border border-[#E85D2A]/10 self-start sm:self-auto transition-all hover:bg-[#E85D2A]/10">
-          View All Alerts
+          {error ? "Demo Feed" : "Live Feed"}
         </button>
       </div>
 
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-black/5 relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-1 h-full bg-[#E85D2A] opacity-20 group-hover:opacity-100 transition-opacity"></div>
         <div className="space-y-2">
-          {alerts.slice(0, 4).map((alert, index) => (
+          {error && (
+            <div className="text-sm font-semibold text-[#E85D2A] bg-[#E85D2A]/10 rounded-lg px-4 py-3 mb-2">
+              Backend alerts unavailable: {error}
+            </div>
+          )}
+          {visibleAlerts.slice(0, 4).map((alert) => (
             <div
-              key={index}
+              key={alert.id}
               className="flex items-start gap-4 py-4 px-4 border-b border-[#83311A]/5 last:border-b-0 hover:bg-[#F5F1EA]/40 rounded-lg transition-all group/item"
             >
               <div className="relative mt-1.5 flex-shrink-0">
@@ -72,12 +100,12 @@ export function AlertFeed() {
               </div>
 
               <div className="w-10 h-10 rounded-lg bg-[#F5F1EA] flex items-center justify-center text-lg group-hover/item:scale-110 transition-transform flex-shrink-0">
-                {alert.icon}
+                {getAlertIcon(alert.type)}
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[#83311A] text-sm leading-tight">{alert.message}</p>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">{alert.timestamp}</p>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">{formatAlertTime(alert.timestamp)}</p>
               </div>
             </div>
           ))}
