@@ -44,7 +44,7 @@ export const EnvSchema = z.object({
   BACKEND_URL: z.string().url().default('http://localhost:3001'),
   MAX_FILE_SIZE_MB: z.coerce.number().positive().default(10),
   UPLOAD_DIR: z.string().default('./uploads'),
-  MAX_CALL_RETRIES: z.coerce.number().int().positive().default(5),
+  MAX_CALL_RETRIES: z.coerce.number().int().positive().default(3),
   RETRY_INTERVAL_MINUTES: z.coerce.number().int().positive().default(3)
 });
 

@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.toIST = toIST;
 exports.formatIST = formatIST;
 exports.parseScheduleTime = parseScheduleTime;
+exports.shiftTimeByMinutes = shiftTimeByMinutes;
+exports.convertLocalTimeToIst = convertLocalTimeToIst;
 exports.getNextOccurrence = getNextOccurrence;
 exports.isoNow = isoNow;
 const date_fns_1 = require("date-fns");
@@ -23,6 +25,24 @@ function parseScheduleTime(timeStr) {
     if (hours > 23 || minutes > 59)
         throw new Error('Schedule time must be a valid HH:MM time');
     return { hours, minutes };
+}
+function padTimePart(value) {
+    return value.toString().padStart(2, '0');
+}
+function shiftTimeByMinutes(timeStr, deltaMinutes) {
+    const { hours, minutes } = parseScheduleTime(timeStr);
+    const totalMinutes = hours * 60 + minutes + deltaMinutes;
+    const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+    const nextHours = Math.floor(normalized / 60);
+    const nextMinutes = normalized % 60;
+    return `${padTimePart(nextHours)}:${padTimePart(nextMinutes)}`;
+}
+function convertLocalTimeToIst(timeStr, timezoneOffsetMinutes) {
+    const localOffsetMinutes = typeof timezoneOffsetMinutes === 'number'
+        ? -timezoneOffsetMinutes
+        : -new Date().getTimezoneOffset();
+    const deltaMinutes = IST_OFFSET_MINUTES - localOffsetMinutes;
+    return shiftTimeByMinutes(timeStr, deltaMinutes);
 }
 function getNextOccurrence(timeStr) {
     const { hours, minutes } = parseScheduleTime(timeStr);

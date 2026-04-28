@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { Settings, X } from "lucide-react";
 import { DottedBackground } from "../DottedBackground";
 import { CompanionAvatar } from "./CompanionAvatar";
@@ -1578,3 +1578,4 @@ export function CompanionInterface() {
     </div>
   );
 }
+

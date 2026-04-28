@@ -19,6 +19,12 @@ export function buildMissedMedicationSMS(patientName: string, medicineName: stri
     : `Saya.ai alert: ${patientName} did not answer the reminder calls for ${medicineName}. Please check on them urgently. - ${caregiverName}`;
 }
 
+export function buildIntentionalRefusalSMS(patientName: string, medicineName: string, caregiverName: string, language: Language): string {
+  return language === 'hi'
+    ? `Saya.ai alert: ${patientName} ne jaanboojhkar ${medicineName} nahi liya. Kripya unse baat karein. - ${caregiverName}`
+    : `Saya.ai alert: ${patientName} intentionally did not take ${medicineName}. Please talk to them. - ${caregiverName}`;
+}
+
 export function buildConfirmedMedicationSMS(patientName: string, medicineName: string, language: Language): string {
   return language === 'hi'
     ? `Saya.ai update: ${patientName} ne confirm kiya hai ki unhone ${medicineName} le li hai.`

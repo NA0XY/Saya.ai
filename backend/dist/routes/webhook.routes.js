@@ -13,6 +13,8 @@ const StatusWebhookSchema = zod_1.z.object({ CallSid: zod_1.z.string().min(1), S
 const TwilioStatusSchema = zod_1.z.object({ CallSid: zod_1.z.string().min(1), CallStatus: zod_1.z.string().min(1), To: zod_1.z.string().optional().default(''), From: zod_1.z.string().optional().default(''), CallDuration: zod_1.z.string().optional() }).passthrough();
 exports.webhookRouter = (0, express_1.Router)();
 // Twilio webhooks (primary)
+exports.webhookRouter.get('/twilio/voice', (0, asyncHandler_1.asyncHandler)(twilio_webhook_1.handleTwilioVoice));
+exports.webhookRouter.post('/twilio/voice', (0, asyncHandler_1.asyncHandler)(twilio_webhook_1.handleTwilioVoice));
 exports.webhookRouter.get('/twilio/ivr', (0, asyncHandler_1.asyncHandler)(twilio_webhook_1.handleTwilioIvr));
 exports.webhookRouter.post('/twilio/ivr', (0, asyncHandler_1.asyncHandler)(twilio_webhook_1.handleTwilioIvr));
 exports.webhookRouter.post('/twilio/ivr-response', (0, validate_middleware_1.validateBody)(IvrWebhookSchema), (0, asyncHandler_1.asyncHandler)(twilio_webhook_1.handleTwilioIvrResponse));

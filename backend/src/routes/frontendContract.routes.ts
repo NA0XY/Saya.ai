@@ -9,7 +9,9 @@ import {
   FrontendOnboardingSchema,
   FrontendScheduleSchema,
   GoogleAuthSchema,
-  HealthVitalsQuerySchema
+  HealthVitalsQuerySchema,
+  PatientNumberSchema,
+  UpdateSettingsSchema
 } from '../modules/frontendContract/frontendContract.types';
 
 export const frontendContractRouter = Router();
@@ -20,9 +22,12 @@ frontendContractRouter.get('/auth/google/callback', frontendContractController.g
 frontendContractRouter.post('/auth/google', validateBody(GoogleAuthSchema), frontendContractController.googleAuth);
 
 frontendContractRouter.get('/user/profile', authMiddleware, frontendContractController.profile);
+frontendContractRouter.put('/user/patient-number', authMiddleware, validateBody(PatientNumberSchema), frontendContractController.patientNumber);
+frontendContractRouter.put('/user/settings', authMiddleware, validateBody(UpdateSettingsSchema), frontendContractController.updateSettings);
 frontendContractRouter.post('/user/onboarding', authMiddleware, validateBody(FrontendOnboardingSchema), frontendContractController.onboarding);
 
 frontendContractRouter.get('/dashboard/safety-status', authMiddleware, frontendContractController.safetyStatuses);
+frontendContractRouter.get('/dashboard', authMiddleware, frontendContractController.dashboardSummary);
 frontendContractRouter.get('/dashboard/alerts', authMiddleware, frontendContractController.alerts);
 frontendContractRouter.get('/dashboard/health-vitals', authMiddleware, validateQuery(HealthVitalsQuerySchema), frontendContractController.healthVitals);
 

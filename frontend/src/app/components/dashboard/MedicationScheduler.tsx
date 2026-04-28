@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api";
 
 export function MedicationScheduler() {
@@ -17,7 +17,8 @@ export function MedicationScheduler() {
         const result = await api.scheduleMedication({
           drugName: medicineName,
           time,
-          customMessage: customMessage || undefined
+          customMessage: customMessage || undefined,
+          timezoneOffsetMinutes: new Date().getTimezoneOffset()
         });
         setStatus(`Scheduled ${medicineName} (${result.status})`);
         setMedicineName("");
@@ -114,3 +115,4 @@ export function MedicationScheduler() {
     </section>
   );
 }
+

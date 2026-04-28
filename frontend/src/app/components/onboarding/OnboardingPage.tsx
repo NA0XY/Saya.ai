@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { DottedBackground } from "../DottedBackground";
 import { ContactControl } from "./ContactControl";
 import { PersonalityConfig } from "./PersonalityConfig";
@@ -155,3 +155,4 @@ function OnboardingIllustration({ step }: { step: number }) {
     </div>
   );
 }
+

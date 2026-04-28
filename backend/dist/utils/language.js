@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildMedicationReminderScript = buildMedicationReminderScript;
 exports.buildIvrPrompt = buildIvrPrompt;
 exports.buildMissedMedicationSMS = buildMissedMedicationSMS;
+exports.buildIntentionalRefusalSMS = buildIntentionalRefusalSMS;
 exports.buildConfirmedMedicationSMS = buildConfirmedMedicationSMS;
 exports.buildEmotionalEscalationSMS = buildEmotionalEscalationSMS;
 function buildMedicationReminderScript(medicineName, customMessage, language) {
@@ -20,6 +21,11 @@ function buildMissedMedicationSMS(patientName, medicineName, caregiverName, lang
     return language === 'hi'
         ? `Saya.ai alert: ${patientName} ne ${medicineName} ke reminder call ka jawab nahi diya. Kripya turant check karein. - ${caregiverName}`
         : `Saya.ai alert: ${patientName} did not answer the reminder calls for ${medicineName}. Please check on them urgently. - ${caregiverName}`;
+}
+function buildIntentionalRefusalSMS(patientName, medicineName, caregiverName, language) {
+    return language === 'hi'
+        ? `Saya.ai alert: ${patientName} ne jaanboojhkar ${medicineName} nahi liya. Kripya unse baat karein. - ${caregiverName}`
+        : `Saya.ai alert: ${patientName} intentionally did not take ${medicineName}. Please talk to them. - ${caregiverName}`;
 }
 function buildConfirmedMedicationSMS(patientName, medicineName, language) {
     return language === 'hi'

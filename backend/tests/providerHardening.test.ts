@@ -177,6 +177,16 @@ test('status mapping against Twilio real-world CallStatus values', () => {
   assert.equal(mapStatus('failed'), 'failed');
 });
 
+test('medication reminder script includes stored custom message', async () => {
+  setRequiredEnv();
+  const { buildMedicationReminderScript } = await import('../src/utils/language');
+
+  const script = buildMedicationReminderScript('Metoprolol', 'Please take it after breakfast.', 'en');
+
+  assert.ok(script.includes('Metoprolol'));
+  assert.ok(script.includes('Please take it after breakfast.'));
+});
+
 // === Emotional Escalation Tests (unchanged from original) ===
 
 test('emotional escalation requires current and immediately previous user sentiments to be negative', async () => {

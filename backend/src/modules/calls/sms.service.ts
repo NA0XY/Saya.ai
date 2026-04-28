@@ -2,7 +2,7 @@ import type { ApprovedContact } from '../../types/database';
 import type { Language } from '../../types/common';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
-import { buildConfirmedMedicationSMS, buildEmotionalEscalationSMS, buildMissedMedicationSMS } from '../../utils/language';
+import { buildConfirmedMedicationSMS, buildEmotionalEscalationSMS, buildMissedMedicationSMS, buildIntentionalRefusalSMS } from '../../utils/language';
 import { twilioClient } from './twilio.client';
 
 async function sendToContacts(contacts: ApprovedContact[], body: string): Promise<void> {
@@ -22,6 +22,9 @@ export const smsService = {
   },
   sendMedicationMissedSms(patientName: string, medicineName: string, contacts: ApprovedContact[], caregiverName: string): Promise<void> {
     return sendToContacts(contacts, buildMissedMedicationSMS(patientName, medicineName, caregiverName, 'en'));
+  },
+  sendIntentionalRefusalSms(patientName: string, medicineName: string, contacts: ApprovedContact[], caregiverName: string): Promise<void> {
+    return sendToContacts(contacts, buildIntentionalRefusalSMS(patientName, medicineName, caregiverName, 'en'));
   },
   sendEmotionalEscalationSms(patientName: string, contacts: ApprovedContact[]): Promise<void> {
     return sendToContacts(contacts, buildEmotionalEscalationSMS(patientName));

@@ -1,210 +1,202 @@
-import { useRef, useEffect, useState } from "react";
-import { useLenisScroll } from "../hooks/useLenisScroll";
-import { useCloudDrift } from "../hooks/useCloudDrift";
-import { DashboardNav } from "./dashboard/DashboardNav";
-import { SafetyStatus } from "./dashboard/SafetyStatus";
-import { MedicationScheduler } from "./dashboard/MedicationScheduler";
-import { UpcomingCalls } from "./dashboard/UpcomingCalls";
-import { LiveCallDemo } from "./dashboard/LiveCallDemo";
-import { AlertFeed } from "./dashboard/AlertFeed";
-import { api, type AlertDto, type HealthVitalsDto, type SafetyStatusDto, type UserProfile } from "../lib/api";
+import React, { useEffect, useMemo, useState } from "react";
+import { SidebarNav } from "./dashboard/SidebarNav";
+import { MoodWidget }              from "./dashboard/widgets/MoodWidget";
+import { CallsRemainingWidget }    from "./dashboard/widgets/CallsRemainingWidget";
+import { CallsMissedWidget }       from "./dashboard/widgets/CallsMissedWidget";
+import { UpcomingCallsPanel }      from "./dashboard/widgets/UpcomingCallsPanel";
+import { ScheduledRemindersPanel } from "./dashboard/widgets/ScheduledRemindersPanel";
+import { AlertTriangle, Clock } from "lucide-react";
+import { useUser } from "../hooks/useUser";
+import { api, type DashboardSummaryDto } from "../lib/api";
 
 export function DashboardPage() {
-  const pageRef = useRef<HTMLDivElement>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [safetyStatuses, setSafetyStatuses] = useState<SafetyStatusDto[]>([]);
-  const [alerts, setAlerts] = useState<AlertDto[]>([]);
-  const [vitals, setVitals] = useState<HealthVitalsDto | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(true);
+  const [selectedCallId, setSelectedCallId] = useState<string>("");
+  const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
+  const { user } = useUser();
 
-  // Initialize smooth scroll
-  useLenisScroll();
+  const displayName = user?.name?.split(" ")[0] || "there";
 
-  // Initialize cloud drift animations
-  useCloudDrift(pageRef);
+  const loadSummary = async () => {
+    try {
+      const data = await api.dashboardSummary();
+      setSummary(data);
+      return data;
+    } catch (error) {
+      console.error("Failed to load dashboard summary", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
-    async function loadDashboard() {
-      setIsSyncing(true);
-      setApiError(null);
-      try {
-        const [profileData, safetyData, alertsData, vitalsData] = await Promise.all([
-          api.profile(),
-          api.safetyStatus(),
-          api.alerts(),
-          api.healthVitals("7d")
-        ]);
-        if (cancelled) return;
-        setProfile(profileData);
-        setSafetyStatuses(safetyData);
-        setAlerts(alertsData);
-        setVitals(vitalsData);
-      } catch (error) {
-        if (!cancelled) setApiError(error instanceof Error ? error.message : "Dashboard sync failed");
-      } finally {
-        if (!cancelled) setIsSyncing(false);
-      }
+
+    async function bootstrap() {
+      const data = await loadSummary();
+      if (cancelled || !data) return;
     }
-    loadDashboard();
+
+    bootstrap();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Register GSAP plugins
   useEffect(() => {
-    if (window.gsap && window.ScrollTrigger) {
-      window.gsap.registerPlugin(window.ScrollTrigger, window.Observer, window.ScrollSmoother);
+    const interval = window.setInterval(() => {
+      void loadSummary();
+    }, 30000);
 
-      // Entrance animations for sections
-      const sections = document.querySelectorAll('.dashboard-card-wrapper');
-      sections.forEach((section) => {
-        window.gsap.fromTo(section, 
-          { 
-            y: 30, 
-            opacity: 0 
-          }, 
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            ease: "power2.out",
-            scrollTrigger: {
-              trigger: section,
-              start: "top 90%",
-              toggleActions: "play none none none"
-            }
-          }
-        );
-      });
+    const handleFocus = () => {
+      void loadSummary();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, []);
+
+  const activeSchedules = summary?.activeSchedules ?? [];
+  const recentCallLogs = summary?.recentCallLogs ?? [];
+  const upcomingCount = activeSchedules.length;
+  const missedCount = useMemo(
+    () => recentCallLogs.filter((log) => log.status === "no_answer" || log.status === "failed").length,
+    [recentCallLogs]
+  );
+
+  useEffect(() => {
+    if (!selectedCallId && activeSchedules.length > 0) {
+      setSelectedCallId(activeSchedules[0].id);
     }
-    // Set ready after a small delay
-    const timer = setTimeout(() => setIsReady(true), 150);
-    return () => clearTimeout(timer);
-  }, [isReady]);
+    if (selectedCallId && activeSchedules.length > 0 && !activeSchedules.some((schedule) => schedule.id === selectedCallId)) {
+      setSelectedCallId(activeSchedules[0].id);
+    }
+  }, [activeSchedules, selectedCallId]);
 
   return (
-    <div 
-      id="smooth-wrapper" 
-      className="page-wrapper" 
-      ref={pageRef} 
-      style={{ 
-        opacity: isReady ? 1 : 0, 
-        transition: 'opacity 0.4s ease-in-out',
-        backgroundColor: '#F5F1EA'
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        overflow: "hidden",
+        background: "#F6F4EB",
+        fontFamily: "'Caveat', cursive",
       }}
     >
-      <div className="global-styles w-embed" style={{ display: 'none' }}></div>
+      {/* ── Sidebar (256px fixed) */}
+      <SidebarNav />
 
-      {/* Background Decorative Clouds */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <img src="/koi-assets/6833fd0829c964ec1f08358c_cloud01.svg" className="absolute top-[10%] -left-20 w-64 opacity-10 animate-float" style={{ animationDuration: '15s' }} alt="" />
-        <img src="/koi-assets/6833fd0829c964ec1f08358c_cloud02.svg" className="absolute top-[40%] -right-20 w-80 opacity-10 animate-float" style={{ animationDuration: '20s', animationDirection: 'reverse' }} alt="" />
-      </div>
+      {/*
+       * CSS Grid — 5 rows:
+       *   auto  → top bar
+       *   auto  → alerts
+       *   240px → widget row
+       *   1fr   → panels
+       *   auto  → footer
+       */}
+      <div
+        style={{
+          marginLeft: "256px",
+          width: "calc(100vw - 256px)",
+          height: "100vh",
+          overflow: "hidden",
+          display: "grid",
+          gridTemplateRows: "auto 240px 1fr auto",
+        }}
+      >
 
-      <div className="navbar">
-        <DashboardNav />
-      </div>
-
-      <div id="smooth-content" className="dots-wrapper relative z-10">
-        <div data-speed="0.5" className="dots-container"></div>
-        
-        <main className="main-wrapper py-8 px-4 md:px-6 lg:px-8">
-              
-              {/* Patient Profile Header - Improved Visual Hierarchy */}
-              <div className="dashboard-card-wrapper mb-12 max-w-full">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-8 bg-white rounded-3xl p-8 shadow-sm border border-black/5 relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-[#E85D2A]"></div>
-                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#F5F1EA] to-[#E85D2A]/10 flex items-center justify-center text-6xl shadow-lg flex-shrink-0">
-                    👴
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex flex-col gap-4 md:gap-6">
-                      <div className="flex flex-col md:flex-row md:items-center gap-4">
-                        <h1 className="text-4xl md:text-5xl font-bold text-[#83311A]">{profile?.name ?? "Rajesh Kumar"}</h1>
-                        <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase tracking-widest border border-green-200 w-fit">
-                          {vitals?.vitalsStatus === "critical" ? "Needs Attention" : vitals?.vitalsStatus === "warning" ? "Watch Closely" : "Stable Condition"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-                        <div className="space-y-2">
-                          <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Age</span>
-                          <p className="text-[#83311A] font-bold text-lg">{profile ? "Caregiver" : "72 Years"}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Blood Group</span>
-                          <p className="text-[#83311A] font-bold text-lg">{profile?.role ?? "O Positive"}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Location</span>
-                          <p className="text-[#83311A] font-bold text-lg">{profile?.email ?? "Mumbai, MH"}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Last Check-in</span>
-                          <p className="text-[#83311A] font-bold text-lg">{isSyncing ? "Syncing" : apiError ? "Demo Mode" : "Live"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 md:flex-col flex-shrink-0">
-                    <button className="w-12 h-12 rounded-xl bg-[#F5F1EA] flex items-center justify-center text-[#83311A] hover:bg-[#E85D2A] hover:text-white transition-all shadow-md text-xl hover:shadow-lg transform hover:-translate-y-0.5">
-                      📞
-                    </button>
-                    <button className="w-12 h-12 rounded-xl bg-[#F5F1EA] flex items-center justify-center text-[#83311A] hover:bg-[#E85D2A] hover:text-white transition-all shadow-md text-xl hover:shadow-lg transform hover:-translate-y-0.5">
-                      ⚙️
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid Layout for Dashboard Components - Full Width */}
-              <div className="grid grid-cols-1 gap-8 md:gap-10">
-                
-                {/* Safety Status - Full Width */}
-                <div className="dashboard-card-wrapper">
-                  <SafetyStatus statuses={safetyStatuses} isLoading={isSyncing} error={apiError} />
-                </div>
-
-                {/* Two Column Layout for Medication & Calls */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 md:gap-10">
-                  <div className="dashboard-card-wrapper">
-                    <MedicationScheduler />
-                  </div>
-                  <div className="dashboard-card-wrapper">
-                    <UpcomingCalls />
-                  </div>
-                </div>
-
-                {/* Alert Feed and Quick Actions - Better Distribution */}
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 md:gap-10">
-                  <div className="xl:col-span-2 dashboard-card-wrapper">
-                    <AlertFeed alerts={alerts} error={apiError} />
-                  </div>
-                  <div className="xl:col-span-2 dashboard-card-wrapper">
-                    <LiveCallDemo />
-                  </div>
-                </div>
-
-              </div>
-        </main>
-        
-        {/* Simplified Dashboard Footer */}
-        <footer className="py-4 px-4 border-t border-[#83311A]/10 mt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-[#83311A]/60">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-[#83311A]">SAYA.AI</span>
-              <span>© 2026 Dashboard</span>
-            </div>
-            <div className="flex gap-6">
-              <a href="#" className="hover:text-[#E85D2A] transition-colors">Privacy</a>
-              <a href="#" className="hover:text-[#E85D2A] transition-colors">Terms</a>
-              <a href="#" className="hover:text-[#E85D2A] transition-colors">Support</a>
-            </div>
+        {/* ── ROW 1 · Top bar */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+            padding: "20px 32px",
+            borderBottom: "2px solid rgba(26,26,26,0.07)",
+            background: "#F6F4EB",
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <h1
+              style={{
+                fontFamily: "'Caveat', cursive",
+                fontWeight: 700,
+                fontSize: "36px",
+                color: "#1A1A1A",
+                lineHeight: 1.2,
+                margin: 0,
+                paddingRight: "10px",
+              }}
+            >
+              Good morning, {displayName}
+            </h1>
+            <p
+              style={{
+                fontFamily: "'Caveat', cursive",
+                fontWeight: 400,
+                fontSize: "20px",
+                color: "rgba(26,26,26,0.42)",
+                margin: "4px 0 0",
+              }}
+            >
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
           </div>
-        </footer>
+        </div>
+
+
+
+        {/* ── ROW 3 · Analytics widgets (3 columns) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "24px",
+            padding: "0 32px 24px",
+            overflow: "hidden",
+          }}
+        >
+          <MoodWidget />
+          <CallsRemainingWidget count={upcomingCount} />
+          <CallsMissedWidget count={missedCount} />
+        </div>
+
+        {/* ── ROW 4 · Panels */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+            padding: "0 24px",
+            overflow: "hidden",
+            minHeight: 0,
+          }}
+        >
+          <UpcomingCallsPanel selectedId={selectedCallId} onSelect={setSelectedCallId} calls={activeSchedules} />
+          <ScheduledRemindersPanel onScheduled={() => { void loadSummary(); }} />
+        </div>
+
+        {/* ── ROW 5 · Footer */}
+        <div
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "7px 24px", borderTop: "1px solid rgba(26,26,26,0.06)",
+          }}
+        >
+          <p style={{ fontFamily: "'Caveat', cursive", fontSize: "16px", color: "rgba(26,26,26,0.3)", margin: 0 }}>
+            🔒 SAYA.AI Guardian — powered by Twilio + Supabase
+          </p>
+          <p style={{ fontFamily: "'Caveat', cursive", fontSize: "16px", color: "rgba(26,26,26,0.2)", margin: 0 }}>
+            v2.4.1 — Session active
+          </p>
+        </div>
+
       </div>
     </div>
   );

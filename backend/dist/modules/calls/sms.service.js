@@ -23,6 +23,9 @@ exports.smsService = {
     sendMedicationMissedSms(patientName, medicineName, contacts, caregiverName) {
         return sendToContacts(contacts, (0, language_1.buildMissedMedicationSMS)(patientName, medicineName, caregiverName, 'en'));
     },
+    sendIntentionalRefusalSms(patientName, medicineName, contacts, caregiverName) {
+        return sendToContacts(contacts, (0, language_1.buildIntentionalRefusalSMS)(patientName, medicineName, caregiverName, 'en'));
+    },
     sendEmotionalEscalationSms(patientName, contacts) {
         return sendToContacts(contacts, (0, language_1.buildEmotionalEscalationSMS)(patientName));
     },
