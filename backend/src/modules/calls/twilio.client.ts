@@ -81,15 +81,13 @@ export const twilioClient: TelephonyProvider = {
         method: 'POST',
       });
 
-      // @ts-expect-error -- hi-IN/en-IN are valid Twilio Polly voices at runtime
-      gather.say({ voice: 'Polly.Aditi', language: voiceLanguage }, params.message);
+      gather.say({ voice: 'Polly.Aditi', language: voiceLanguage as any }, params.message);
 
       // If no input (timeout), redirect to same action URL so the handler
       // receives empty Digits and can mark as missed
       response.redirect({ method: 'POST' }, params.actionUrl);
     } else {
-      // @ts-expect-error -- hi-IN/en-IN are valid Twilio Polly voices at runtime
-      response.say({ voice: 'Polly.Aditi', language: voiceLanguage }, params.message);
+      response.say({ voice: 'Polly.Aditi', language: voiceLanguage as any }, params.message);
     }
 
     const twimlString = response.toString();

@@ -30,9 +30,18 @@ exports.companionService = {
             this.getHistory(patient.id, 20),
             patient_repository_1.patientRepository.findEscalationContacts(patient.id)
         ]);
-        const system = (0, companion_prompts_1.buildCompanionSystemPrompt)(patient, memories, recentNews, patient.companion_tone);
+        const semanticMatches = await memory_service_1.memoryService.semanticSearch(patient.id, request.message, 6).catch(() => []);
+        const semanticPromptMemories = semanticMatches.map((match, index) => ({
+            id: `vault-${index + 1}`,
+            patient_id: patient.id,
+            memory_key: `vault_match_${index + 1}`,
+            memory_value: match.content,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }));
+        const system = (0, companion_prompts_1.buildCompanionSystemPrompt)(patient, [...memories, ...semanticPromptMemories], recentNews, patient.companion_tone);
         const completion = await (0, timeout_1.withTimeout)(groq.chat.completions.create({
-            model: 'llama3-70b-8192',
+            model: 'llama-3.3-70b-versatile',
             temperature: 0.6,
             max_tokens: 500,
             messages: [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role, content: m.content })), { role: 'user', content: request.message }]
@@ -45,8 +54,19 @@ exports.companionService = {
         const familyAction = memory_service_1.memoryService.extractFamilyActionRequest(rawReply);
         const memoriesUpdated = await memory_service_1.memoryService.extractAndSaveMemories(patient.id, rawReply);
         const cleanReply = memory_service_1.memoryService.stripControlTags(rawReply);
+        await Promise.allSettled([
+            memory_service_1.memoryService.appendConversationNote(patient.id, request.message, 'user'),
+            memory_service_1.memoryService.appendConversationNote(patient.id, cleanReply, 'assistant')
+        ]);
         const sentiment = await sentiment_service_1.sentimentService.analyzeSentiment(request.message, request.language);
-        await supabase_1.supabase.from('companion_messages').insert([{ patient_id: patient.id, role: 'user', content: request.message, sentiment }, { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }]);
+        const { error: messageInsertError } = await supabase_1.supabase
+            .from('companion_messages')
+            .insert([
+            { patient_id: patient.id, role: 'user', content: request.message, sentiment },
+            { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }
+        ]);
+        if (messageInsertError)
+            throw apiError_1.ApiError.internal('Failed to store companion messages');
         if (familyAction.hasAction && familyAction.message) {
             const target = contacts[0];
             if (target) {
@@ -54,8 +74,8 @@ exports.companionService = {
                 await alert_service_1.alertService.createAlert({ patient_id: patient.id, caregiver_id: caregiverId, alert_type: 'companion_request', message: familyAction.message });
             }
         }
-        await sentiment_service_1.sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
-        return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated };
+        const escalated = await sentiment_service_1.sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
+        return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated, escalated };
     },
     async getHistory(patientId, limit = 50) {
         const { data, error } = await supabase_1.supabase.from('companion_messages').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(limit);

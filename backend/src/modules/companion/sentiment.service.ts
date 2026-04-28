@@ -24,7 +24,7 @@ export function shouldEscalateForConsecutiveNegativeSentiments(
 export const sentimentService = {
   async analyzeSentiment(message: string, _language: Language): Promise<SentimentTag> {
     const completion = await withTimeout(
-      groq.chat.completions.create({ model: 'llama3-70b-8192', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${buildSentimentPrompt()} Schema: ${SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] }).catch((error: unknown) => {
+      groq.chat.completions.create({ model: 'llama-3.3-70b-versatile', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${buildSentimentPrompt()} Schema: ${SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] }).catch((error: unknown) => {
         throw ApiError.badGateway('Groq sentiment analysis failed', { error: error instanceof Error ? error.message : String(error) }, 'GROQ_SENTIMENT_PROVIDER_ERROR');
       }),
       env.GROQ_TIMEOUT_MS,

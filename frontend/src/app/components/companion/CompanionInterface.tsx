@@ -7,7 +7,6 @@ import { VoiceButton } from "./VoiceButton";
 import { QuickActions } from "./QuickActions";
 import { api, type CompanionHistoryMessage, type CompanionChatResponse, type NewsItem, type PatientMemory } from "../../lib/api";
 import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
-import { MemoryPanel } from "./MemoryPanel";
 import { NewsTicker } from "./NewsTicker";
 import { ChatHistory, type ChatMessage, type SentimentTag } from "./ChatHistory";
 
@@ -90,12 +89,16 @@ export function CompanionInterface() {
   const maxSpeechTimerRef = useRef<number | null>(null);
   const finalTranscriptRef = useRef("");
   const escalationTimeoutRef = useRef<number | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const isAudioPlayingRef = useRef(false);
 
   const [patientId, setPatientId] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [currentSentiment, setCurrentSentiment] = useState<SentimentTag>("neutral");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [liveTranscript, setLiveTranscript] = useState("");
   const [greetingText, setGreetingText] = useState("Namaste. How are you feeling today?");
 
   const [inputLanguage, setInputLanguage] = useState<InputLanguage>(() => {
@@ -147,6 +150,7 @@ export function CompanionInterface() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [escalationBannerVisible, setEscalationBannerVisible] = useState(false);
   const [forceSadMood, setForceSadMood] = useState(false);
+  const [isReplySpeaking, setIsReplySpeaking] = useState(false);
 
   const effectiveMood = useMemo<MoodType>(() => {
     if (forceSadMood) return "sad";
@@ -161,6 +165,83 @@ export function CompanionInterface() {
     if (maxSpeechTimerRef.current !== null) {
       window.clearTimeout(maxSpeechTimerRef.current);
       maxSpeechTimerRef.current = null;
+    }
+  };
+
+  const fallbackSpeakInBrowser = (text: string, sentiment: SentimentTag) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
+    utterance.rate = voiceSpeed === "slow" ? 0.9 : voiceSpeed === "fast" ? 1.1 : 1.0;
+    utterance.pitch = sentiment === "joy" ? 1.15 : sentiment === "sadness" ? 0.9 : 1.0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const playNextQueuedAudio = () => {
+    const nextUrl = audioQueueRef.current.shift();
+    if (!nextUrl) {
+      isAudioPlayingRef.current = false;
+      setIsReplySpeaking(false);
+      return;
+    }
+
+    if (!audioElementRef.current) {
+      audioElementRef.current = new Audio();
+    }
+    const player = audioElementRef.current;
+    isAudioPlayingRef.current = true;
+    setIsReplySpeaking(true);
+    player.src = nextUrl;
+    player.playbackRate = voiceSpeed === "slow" ? 0.9 : voiceSpeed === "fast" ? 1.1 : 1.0;
+    void player.play().catch(() => {
+      URL.revokeObjectURL(nextUrl);
+      playNextQueuedAudio();
+    });
+
+    player.onended = () => {
+      URL.revokeObjectURL(nextUrl);
+      playNextQueuedAudio();
+    };
+    player.onerror = () => {
+      URL.revokeObjectURL(nextUrl);
+      playNextQueuedAudio();
+    };
+  };
+
+  const playAssistantSpeech = async (text: string, sentiment: SentimentTag, targetPatientId?: string) => {
+    const effectivePatientId = targetPatientId ?? patientId;
+    if (!effectivePatientId) return;
+    try {
+      const response = await api.streamCompanionSpeech(effectivePatientId, {
+        text,
+        language: inputLanguage,
+        sentiment,
+        tone: tonePreference,
+        voiceSpeed,
+      });
+      const contentType = response.headers.get("content-type")?.toLowerCase() ?? "audio/mpeg";
+
+      if (!response.body) {
+        throw new Error("No audio stream returned");
+      }
+
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+
+      const audioBlob = new Blob(chunks, { type: contentType.includes("wav") ? "audio/wav" : "audio/mpeg" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioQueueRef.current.push(audioUrl);
+      if (!isAudioPlayingRef.current) {
+        playNextQueuedAudio();
+      }
+    } catch {
+      fallbackSpeakInBrowser(text, sentiment);
     }
   };
 
@@ -221,8 +302,20 @@ export function CompanionInterface() {
   };
 
   const handleResponse = async (userInput: string) => {
-    if (!patientId) {
-      setApiError("No patient selected. Open /companion?patientId=<uuid> once to connect this screen.");
+    let activePatientId = patientId;
+    if (!activePatientId) {
+      try {
+        const context = await api.getCompanionPatientContext();
+        if (context.patient_id) {
+          localStorage.setItem(PATIENT_STORAGE_KEY, context.patient_id);
+          setPatientId(context.patient_id);
+          activePatientId = context.patient_id;
+        }
+      } catch {
+        // ignore and show the onboarding hint below.
+      }
+    }
+    if (!activePatientId) {
       setVoiceState("idle");
       return;
     }
@@ -238,7 +331,7 @@ export function CompanionInterface() {
 
     try {
       const result: CompanionChatResponse = await api.companionChat({
-        patient_id: patientId,
+        patient_id: activePatientId,
         message: userInput,
         language: inputLanguage,
       });
@@ -252,9 +345,10 @@ export function CompanionInterface() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setCurrentSentiment(result.sentiment);
+      void playAssistantSpeech(result.reply, result.sentiment, activePatientId);
 
       if (result.memories_updated) {
-        await loadMemories(patientId);
+        await loadMemories(activePatientId);
       }
 
       if (result.escalated) {
@@ -293,13 +387,26 @@ export function CompanionInterface() {
 
   useEffect(() => {
     const resolvedPatientId = getPatientIdFromContext();
-    setPatientId(resolvedPatientId);
-    if (!resolvedPatientId) {
-      setApiError("No patient selected. Open /companion?patientId=<uuid> once to connect this screen.");
+    if (resolvedPatientId) {
+      setPatientId(resolvedPatientId);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const context = await api.getCompanionPatientContext();
+        if (context.patient_id) {
+          localStorage.setItem(PATIENT_STORAGE_KEY, context.patient_id);
+          setPatientId(context.patient_id);
+          return;
+        }
+      } catch {
+        // Keep silent here; auth/onboarding flow will surface its own error states.
+      }
       setLoadingHistory(false);
       setLoadingMemories(false);
       setLoadingNews(false);
-    }
+    })();
   }, []);
 
   useEffect(() => {
@@ -326,13 +433,15 @@ export function CompanionInterface() {
 
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognitionInstance = new SpeechRecognition();
-    recognitionInstance.continuous = false;
+    recognitionInstance.continuous = true;
     recognitionInstance.interimResults = true;
-    recognitionInstance.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
+    recognitionInstance.maxAlternatives = 3;
+    recognitionInstance.lang = inputLanguage === "hi" ? "hi-IN" : "en-US";
 
     recognitionInstance.onstart = () => {
       setVoiceState("listening");
       setInterimTranscript("");
+      setLiveTranscript("");
       finalTranscriptRef.current = "";
       setPermissionError(null);
     };
@@ -351,6 +460,7 @@ export function CompanionInterface() {
         finalTranscriptRef.current = `${finalTranscriptRef.current} ${finalTranscript}`.trim();
         setInterimTranscript("");
       }
+      setLiveTranscript(`${finalTranscriptRef.current} ${interim}`.trim());
     };
 
     recognitionInstance.onend = () => {
@@ -361,6 +471,7 @@ export function CompanionInterface() {
 
       const finalTranscript = finalTranscriptRef.current.trim();
       if (!finalTranscript) {
+        setLiveTranscript("");
         setVoiceState("idle");
         return;
       }
@@ -368,6 +479,7 @@ export function CompanionInterface() {
       setVoiceState("processing");
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
+        setLiveTranscript("");
         finalTranscriptRef.current = "";
         void handleResponse(finalTranscript);
       }, 300);
@@ -380,7 +492,13 @@ export function CompanionInterface() {
         setPermissionError("Please allow microphone access to talk to your companion.");
         setShowTextInput(true);
       } else if (event.error === "no-speech") {
-        setPermissionError("I didn't hear anything. Please try again.");
+        const isEdge = typeof navigator !== "undefined" && navigator.userAgent.includes("Edg/");
+        setPermissionError(
+          isEdge
+            ? "I couldn't capture voice here. Edge speech recognition can be unreliable; please try typed input or Chrome."
+            : "I didn't hear anything. Please try again."
+        );
+        setShowTextInput(true);
       } else {
         setPermissionError("Voice not available. You can type instead.");
         setShowTextInput(true);
@@ -402,13 +520,23 @@ export function CompanionInterface() {
   useEffect(() => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, inputLanguage);
     if (recognitionRef.current) {
-      recognitionRef.current.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
+      recognitionRef.current.lang = inputLanguage === "hi" ? "hi-IN" : "en-US";
     }
   }, [inputLanguage]);
 
   useEffect(() => {
     return () => {
       if (escalationTimeoutRef.current !== null) window.clearTimeout(escalationTimeoutRef.current);
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.src = "";
+        audioElementRef.current = null;
+      }
+      audioQueueRef.current.forEach((url) => URL.revokeObjectURL(url));
+      audioQueueRef.current = [];
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
@@ -456,19 +584,8 @@ export function CompanionInterface() {
     );
   };
 
-  const handleDeleteMemory = async (memoryKey: string) => {
-    if (!patientId) return;
-    try {
-      await api.deleteCompanionMemory(patientId, memoryKey);
-      await loadMemories(patientId);
-    } catch (error) {
-      setMemoriesError(error instanceof Error ? error.message : "Failed to delete memory");
-    }
-  };
-
   const savePreferences = async () => {
     if (!patientId) {
-      setApiError("No patient selected. Open /companion?patientId=<uuid> once to connect this screen.");
       return;
     }
 
@@ -595,11 +712,16 @@ export function CompanionInterface() {
               )}
             </div>
 
-            {voiceState === "listening" && interimTranscript && (
+            {voiceState === "listening" && (liveTranscript || interimTranscript) && (
               <div className="w-full max-w-xl">
                 <div className="mx-auto rounded-2xl border border-[#E85D2A]/20 bg-white px-4 py-3 text-sm lg:text-base text-[#7A6A63] italic animate-pulse transition-all duration-300">
-                  {interimTranscript}
+                  {liveTranscript || interimTranscript}
                 </div>
+              </div>
+            )}
+            {isReplySpeaking && (
+              <div className="rounded-full border border-[#E85D2A]/30 bg-white px-4 py-2 text-sm font-bold tracking-wider uppercase text-[#83311A] animate-pulse transition-all duration-300">
+                Speaking...
               </div>
             )}
 
@@ -614,8 +736,9 @@ export function CompanionInterface() {
                   <p className="text-sm text-center text-[#83311A] font-semibold">{apiError}</p>
                 </div>
               )}
-              <ChatHistory messages={messages} loading={loadingHistory} error={historyError} />
-              <MemoryPanel memories={memories} loading={loadingMemories} error={memoriesError} />
+              {(loadingHistory || Boolean(historyError) || messages.length > 0) && (
+                <ChatHistory messages={messages} loading={loadingHistory} error={historyError} />
+              )}
             </div>
 
             <div className="w-full mt-2">
@@ -777,36 +900,6 @@ export function CompanionInterface() {
                     {category}
                   </label>
                 ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[#E85D2A]/15 bg-[#F5F1EA] p-4">
-              <h4 className="text-sm font-bold tracking-tight uppercase text-[#2A2B3D]">Memory Viewer</h4>
-              <div className="mt-3 space-y-2">
-                {loadingMemories && <div className="h-12 rounded-2xl bg-gray-200 animate-pulse" />}
-                {!loadingMemories && memories.length === 0 && (
-                  <p className="text-sm font-semibold text-[#7A6A63]">No memories available yet.</p>
-                )}
-                {!loadingMemories &&
-                  memories.map((memory) => (
-                    <div
-                      key={`settings-memory-${memory.id}`}
-                      className="rounded-2xl bg-white border border-[#E85D2A]/10 px-3 py-2 flex items-center gap-2"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-[#83311A] truncate">{memory.memory_key}</p>
-                        <p className="text-sm font-semibold text-[#2A2B3D] truncate">{memory.memory_value}</p>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label={`Delete memory ${memory.memory_key}`}
-                        onClick={() => handleDeleteMemory(memory.memory_key)}
-                        className="text-sm font-bold text-[#E85D2A] hover:text-[#83311A] transition-all duration-300"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
               </div>
             </section>
 

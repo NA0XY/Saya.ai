@@ -8,6 +8,7 @@ import { smsService } from '../calls/sms.service';
 import { newsService } from '../news/news.service';
 import { patientRepository } from '../patients/patient.repository';
 import { patientService } from '../patients/patient.service';
+import type { PatientMemory } from '../../types/database';
 import { buildCompanionSystemPrompt } from './companion.prompts';
 import type { ChatRequest, ChatResponse } from './companion.types';
 import { memoryService } from './memory.service';
@@ -26,10 +27,19 @@ export const companionService = {
       this.getHistory(patient.id, 20),
       patientRepository.findEscalationContacts(patient.id)
     ]);
-    const system = buildCompanionSystemPrompt(patient, memories, recentNews, patient.companion_tone);
+    const semanticMatches = await memoryService.semanticSearch(patient.id, request.message, 6).catch(() => []);
+    const semanticPromptMemories: PatientMemory[] = semanticMatches.map((match, index) => ({
+      id: `vault-${index + 1}`,
+      patient_id: patient.id,
+      memory_key: `vault_match_${index + 1}`,
+      memory_value: match.content,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+    const system = buildCompanionSystemPrompt(patient, [...memories, ...semanticPromptMemories], recentNews, patient.companion_tone);
     const completion = await withTimeout(
       groq.chat.completions.create({
-        model: 'llama3-70b-8192',
+        model: 'llama-3.3-70b-versatile',
         temperature: 0.6,
         max_tokens: 500,
         messages: [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })), { role: 'user', content: request.message }]
@@ -45,6 +55,10 @@ export const companionService = {
     const familyAction = memoryService.extractFamilyActionRequest(rawReply);
     const memoriesUpdated = await memoryService.extractAndSaveMemories(patient.id, rawReply);
     const cleanReply = memoryService.stripControlTags(rawReply);
+    await Promise.allSettled([
+      memoryService.appendConversationNote(patient.id, request.message, 'user'),
+      memoryService.appendConversationNote(patient.id, cleanReply, 'assistant')
+    ]);
     const sentiment = await sentimentService.analyzeSentiment(request.message, request.language);
     const { error: messageInsertError } = await supabase
       .from('companion_messages')

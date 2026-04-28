@@ -14,9 +14,9 @@ export declare const CreatePatientSchema: z.ZodObject<{
 }, {
     full_name: string;
     phone: string;
+    date_of_birth?: string | undefined;
     language_preference?: "hi" | "en" | undefined;
     companion_tone?: "warm" | "formal" | "playful" | undefined;
-    date_of_birth?: string | undefined;
 }>;
 export declare const CreateContactSchema: z.ZodObject<{
     name: z.ZodString;
@@ -78,9 +78,9 @@ export declare const OnboardingSchema: z.ZodObject<{
         relationship: string;
         can_receive_escalation_sms?: boolean | undefined;
     }[];
+    date_of_birth?: string | undefined;
     language_preference?: "hi" | "en" | undefined;
     companion_tone?: "warm" | "formal" | "playful" | undefined;
-    date_of_birth?: string | undefined;
 }>;
 export type CreatePatientInput = z.infer<typeof CreatePatientSchema>;
 export type CreateContactInput = z.infer<typeof CreateContactSchema>;

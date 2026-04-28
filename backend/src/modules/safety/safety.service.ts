@@ -82,7 +82,7 @@ export const safetyService = {
     if (interactions.length === 0) return 'No known food or drug interactions found for this prescription in our database.';
     const prompt = RAG_SAFETY_PROMPT.replace('{{INTERACTION_RECORDS}}', JSON.stringify(interactions, null, 2));
     const completion = await withTimeout(
-      groq.chat.completions.create({ model: 'llama3-70b-8192', temperature: 0, max_tokens: 1200, messages: [{ role: 'system', content: prompt }, { role: 'user', content: 'Format these database warnings for the caregiver.' }] }).catch((error: unknown) => {
+      groq.chat.completions.create({ model: 'llama-3.3-70b-versatile', temperature: 0, max_tokens: 1200, messages: [{ role: 'system', content: prompt }, { role: 'user', content: 'Format these database warnings for the caregiver.' }] }).catch((error: unknown) => {
         throw ApiError.badGateway('Groq safety formatting failed', { error: error instanceof Error ? error.message : String(error) }, 'GROQ_SAFETY_PROVIDER_ERROR');
       }),
       env.GROQ_TIMEOUT_MS,

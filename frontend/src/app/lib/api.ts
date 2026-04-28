@@ -49,6 +49,14 @@ export type CompanionChatResponse = {
   escalated?: boolean;
 };
 
+export type CompanionTtsRequest = {
+  text: string;
+  language?: "hi" | "en";
+  sentiment?: "joy" | "neutral" | "anxiety" | "sadness";
+  tone?: "warm" | "formal" | "playful";
+  voiceSpeed?: "slow" | "medium" | "fast";
+};
+
 export type CompanionHistoryMessage = {
   id: string;
   patient_id: string;
@@ -56,6 +64,10 @@ export type CompanionHistoryMessage = {
   content: string;
   sentiment: "joy" | "neutral" | "anxiety" | "sadness" | null;
   created_at: string;
+};
+
+export type CompanionPatientContext = {
+  patient_id: string | null;
 };
 
 export type PatientMemory = {
@@ -129,6 +141,22 @@ async function companionRequest<T>(path: string, options: RequestInit = {}): Pro
   return requestWithBase<T>(COMPANION_API_BASE_URL, path, options);
 }
 
+async function companionBinaryRequest(path: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken();
+  const headers = new Headers(options.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(`${COMPANION_API_BASE_URL}${path}`, { ...options, headers });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? `Request failed with ${response.status}`);
+  }
+  return response;
+}
+
 function unwrapData<T>(payload: T | ApiEnvelope<T>): T {
   if (payload && typeof payload === "object" && "success" in payload && "data" in payload) {
     return (payload as ApiEnvelope<T>).data;
@@ -178,6 +206,17 @@ export const api = {
     });
     return unwrapData(result);
   },
+
+  getCompanionPatientContext: async () => {
+    const result = await companionRequest<CompanionPatientContext | ApiEnvelope<CompanionPatientContext>>("/companion/patient");
+    return unwrapData(result);
+  },
+
+  streamCompanionSpeech: (patientId: string, payload: CompanionTtsRequest) =>
+    companionBinaryRequest(`/companion/tts/${patientId}/stream`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   getCompanionHistory: async (patientId: string) => {
     const result = await companionRequest<CompanionHistoryMessage[] | ApiEnvelope<CompanionHistoryMessage[]>>(`/companion/history/${patientId}`);

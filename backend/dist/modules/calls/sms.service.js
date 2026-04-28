@@ -4,11 +4,11 @@ exports.smsService = void 0;
 const env_1 = require("../../config/env");
 const logger_1 = require("../../config/logger");
 const language_1 = require("../../utils/language");
-const exotel_client_1 = require("./exotel.client");
+const twilio_client_1 = require("./twilio.client");
 async function sendToContacts(contacts, body) {
     await Promise.all(contacts.map(async (contact) => {
         try {
-            await exotel_client_1.exotelClient.sendSms({ to: contact.phone, from: env_1.env.EXOTEL_CALLER_ID, body });
+            await twilio_client_1.twilioClient.sendSms({ to: contact.phone, from: env_1.env.TWILIO_PHONE_NUMBER, body });
             logger_1.logger.info('[SMS] Sent', { contactId: contact.id });
         }
         catch (error) {
