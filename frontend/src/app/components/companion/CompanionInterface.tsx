@@ -4,7 +4,6 @@ import { Settings, X } from "lucide-react";
 import { DottedBackground } from "../DottedBackground";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
-import { QuickActions } from "./QuickActions";
 import {
   api,
   type CompanionHistoryMessage,
@@ -251,6 +250,32 @@ function stripControlTags(value: string): string {
   return /[\u0900-\u097F]/.test(stripped) ? ENGLISH_ONLY_FALLBACK_REPLY : stripped;
 }
 
+function isGratitudeClose(text: string): boolean {
+  const normalized = text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return false;
+
+  const exactClosers = new Set([
+    "thanks",
+    "thank you",
+    "thank you so much",
+    "thanks a lot",
+    "thankyou",
+    "ok thank you",
+    "okay thank you",
+  ]);
+  if (exactClosers.has(normalized)) return true;
+
+  const words = normalized.split(" ").filter(Boolean);
+  if (words.length <= 8 && (normalized.startsWith("thank you") || normalized.startsWith("thanks"))) {
+    return true;
+  }
+  return false;
+}
+
 function getPatientIdFromContext(): string | null {
   if (typeof window === "undefined") return null;
   const fromQuery = new URLSearchParams(window.location.search).get("patientId");
@@ -341,9 +366,11 @@ export function CompanionInterface() {
   const [memories, setMemories] = useState<PatientMemory[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [showNewsPanel, setShowNewsPanel] = useState(false);
+  const [chatExpanded, setChatExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [escalationBannerVisible, setEscalationBannerVisible] = useState(false);
   const [forceSadMood, setForceSadMood] = useState(false);
+  const [isCompanionHovered, setIsCompanionHovered] = useState(false);
   const [isReplySpeaking, setIsReplySpeaking] = useState(false);
 
   useEffect(() => {
@@ -352,8 +379,9 @@ export function CompanionInterface() {
 
   const effectiveMood = useMemo<MoodType>(() => {
     if (forceSadMood) return "sad";
+    if (isCompanionHovered && (voiceState === "idle" || voiceState === "speaking")) return "happy";
     return sentimentToMood(currentSentiment, voiceState);
-  }, [currentSentiment, forceSadMood, voiceState]);
+  }, [currentSentiment, forceSadMood, isCompanionHovered, voiceState]);
 
   const clearSpeechTimers = () => {
     if (debounceRef.current !== null) {
@@ -656,7 +684,7 @@ export function CompanionInterface() {
   };
 
   const handleResponse = async (userInput: string, source: "voice" | "text" | "action" = "text") => {
-    autoResumeListeningRef.current = source === "voice";
+    autoResumeListeningRef.current = source === "voice" && !isGratitudeClose(userInput);
     setShowRetryChips(false);
     let activePatientId = patientId;
     if (!activePatientId) {
@@ -1173,21 +1201,6 @@ export function CompanionInterface() {
     void handleResponse(content, "text");
   };
 
-  const handleCallFamily = () => {
-    autoResumeListeningRef.current = false;
-    void handleResponse("Please help me contact my family.", "action");
-  };
-
-  const handleHelp = () => {
-    autoResumeListeningRef.current = false;
-    void handleResponse("I need help right now.", "action");
-  };
-
-  const handleRemindLater = () => {
-    autoResumeListeningRef.current = false;
-    void handleResponse("Please remind me later.", "action");
-  };
-
   const handleNewsCardClick = (headline: string) => {
     setShowNewsPanel(false);
     autoResumeListeningRef.current = false;
@@ -1261,7 +1274,11 @@ export function CompanionInterface() {
       <div className="relative z-10 flex-1 flex items-center justify-center">
         <div className="w-full max-w-[1400px] flex flex-col lg:flex-row items-start justify-center px-6 md:px-12 py-16 lg:py-20 gap-10 lg:gap-16">
           <div className="w-full lg:flex-1 flex items-center justify-center mt-14 lg:mt-0">
-            <div className="w-[300px] h-[300px] sm:w-[450px] sm:h-[450px] flex items-center justify-center">
+            <div
+              className="w-[300px] h-[300px] sm:w-[450px] sm:h-[450px] flex items-center justify-center"
+              onMouseEnter={() => setIsCompanionHovered(true)}
+              onMouseLeave={() => setIsCompanionHovered(false)}
+            >
               <CompanionAvatar mood={effectiveMood} voiceState={voiceState} />
             </div>
           </div>
@@ -1391,31 +1408,28 @@ export function CompanionInterface() {
                   <p className="text-sm text-center text-[#83311A] font-semibold">{apiError}</p>
                 </div>
               )}
-              {import.meta.env.DEV && (
-                <div className="rounded-2xl border border-[#E85D2A]/20 bg-white/90 px-4 py-3 text-sm font-semibold text-[#2A2B3D] transition-all duration-300">
-                  <div className="uppercase tracking-wider text-[#83311A] text-sm">Latency (dev)</div>
-                  <div className="mt-2 flex flex-wrap gap-3">
-                    <span>STT: {latencyMetrics.stt_ms ?? "-"}ms</span>
-                    <span>1st Token: {latencyMetrics.chat_first_token_ms ?? "-"}ms</span>
-                    <span>Chat: {latencyMetrics.chat_total_ms ?? "-"}ms</span>
-                    <span>TTS 1st Byte: {latencyMetrics.tts_first_audio_ms ?? "-"}ms</span>
-                    <span>TTS Total: {latencyMetrics.tts_total_ms ?? "-"}ms</span>
-                  </div>
+              {(loadingHistory || Boolean(historyError) || messages.length > 0) && (
+                <div className="rounded-2xl border border-[#E85D2A]/20 bg-white/90 px-4 py-3 transition-all duration-300">
+                  <button
+                    type="button"
+                    aria-label={chatExpanded ? "Minimize chat history" : "Open chat history"}
+                    onClick={() => setChatExpanded((previous) => !previous)}
+                    className="w-full flex items-center justify-between text-left transition-all duration-300"
+                  >
+                    <span className="uppercase tracking-wider text-[#83311A] text-sm font-bold">
+                      Conversation
+                    </span>
+                    <span className="text-sm font-semibold text-[#2A2B3D]">
+                      {chatExpanded ? "Minimize Chat" : "Open Chat"}
+                    </span>
+                  </button>
                 </div>
               )}
-              {(loadingHistory || Boolean(historyError) || messages.length > 0) && (
+              {chatExpanded && (loadingHistory || Boolean(historyError) || messages.length > 0) && (
                 <ChatHistory messages={messages} loading={loadingHistory} error={historyError} />
               )}
             </div>
 
-            <div className="w-full mt-2">
-              <QuickActions
-                onCallFamily={handleCallFamily}
-                onHelp={handleHelp}
-                onRemindLater={handleRemindLater}
-                onShowNews={() => setShowNewsPanel(true)}
-              />
-            </div>
           </div>
         </div>
       </div>
