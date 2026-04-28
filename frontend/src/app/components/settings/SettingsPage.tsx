@@ -1,34 +1,37 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { GuardianContactHub } from "./GuardianContactHub";
-import { MedicalVerificationPortal } from "./MedicalVerificationPortal";
-import { CompanionSoulSettings } from "./CompanionSoulSettings";
 import { PatientNumberSettings } from "./PatientNumberSettings";
 import { GuardianCallerPanel } from "./GuardianCallerPanel";
+<<<<<<< HEAD
 import { SafetyDashboardPanel } from "./SafetyDashboardPanel";
 import { SystemStatusPanel } from "./SystemStatusPanel";
+=======
+>>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 import {
   PhoneIcon,
   MobileIcon,
-  PillIcon,
-  SoulIcon,
-  SafetyIcon,
-  StatusIcon,
   CallerIcon
 } from "./SketchIcons";
 import { api } from "../../lib/api";
 import type { UserProfile } from "../../lib/api";
 
+<<<<<<< HEAD
 type Tab = "contacts" | "patient" | "medical" | "caller" | "soul" | "safety" | "status";
+=======
+type Tab = "contacts" | "patient" | "caller";
+>>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 
 const PILLARS: { id: Tab; label: string; Icon: React.ComponentType }[] = [
   { id: "contacts", label: "Guardian Contacts", Icon: PhoneIcon },
   { id: "patient", label: "Patient Number", Icon: MobileIcon },
-  { id: "medical", label: "Medical Verification", Icon: PillIcon },
   { id: "caller", label: "Guardian Caller", Icon: CallerIcon },
+<<<<<<< HEAD
   { id: "soul", label: "Companion Soul", Icon: SoulIcon },
   { id: "safety", label: "Safety & Precaution", Icon: SafetyIcon },
   { id: "status", label: "System Status", Icon: StatusIcon },
+=======
+>>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 ];
 
 export function SettingsPage() {
@@ -62,16 +65,6 @@ export function SettingsPage() {
     if (profile) setProfile({ ...profile, patientNumber: result.patientNumber });
   };
 
-  const handleMedicalSave = async () => {
-    // Medical verification forms saved to API
-  };
-
-  const handleSoulSave = async (tone: any, language: any, interests: string[]) => {
-    await api.updateSettings({ personality: tone, language });
-    await api.updateMemory({ interests });
-    if (profile) setProfile({ ...profile, companionTone: tone, companionLanguage: language, interests });
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F5F1EA] flex items-center justify-center">
@@ -92,7 +85,7 @@ export function SettingsPage() {
             <Link to="/dashboard" className="w-8 h-8 sketch-box flex items-center justify-center text-[#83311A] hover:bg-[#D94F2B] hover:text-white transition-all transform hover:-translate-y-0.5" aria-label="Back to Dashboard">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </Link>
-            <h1 className="text-xl font-dm-sans text-[#D94F2B] tracking-tight leading-none uppercase">SAYA.AI SETTINGS</h1>
+            <h1 className="text-xl font-sketch font-bold text-[#D94F2B] relative -top-1.5">SAYA.AI SETTINGS</h1>
           </div>
           <div className="w-10 h-10 bg-[#F5F1EA] sketch-box text-[#D94F2B] flex items-center justify-center text-lg">
             ⚙️
@@ -134,20 +127,8 @@ export function SettingsPage() {
           {activeTab === "patient" && (
             <PatientNumberSettings patientNumber={profile?.patientNumber ?? null} onSave={handlePatientNumberSave} />
           )}
-          {activeTab === "medical" && (
-            <MedicalVerificationPortal onSave={handleMedicalSave} />
-          )}
           {activeTab === "caller" && (
             <GuardianCallerPanel />
-          )}
-          {activeTab === "soul" && (
-            <CompanionSoulSettings profile={profile} onSave={handleSoulSave} />
-          )}
-          {activeTab === "safety" && (
-            <SafetyDashboardPanel />
-          )}
-          {activeTab === "status" && (
-            <SystemStatusPanel />
           )}
         </main>
       </div>

@@ -20,7 +20,7 @@ export const groqNerService = {
   async extractMedicines(ocrText: string): Promise<NerResult> {
     const completion = await withTimeout(
       groq.chat.completions.create({
-        model: 'llama3-70b-8192',
+        model: 'llama-3.3-70b-versatile',
         temperature: 0,
         max_tokens: 2000,
         messages: [

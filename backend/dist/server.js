@@ -9,11 +9,13 @@ const logger_1 = require("./config/logger");
 const app_1 = require("./app");
 const scheduler_1 = require("./jobs/scheduler");
 const companion_websocket_1 = require("./modules/companion/companion.websocket");
+const companionStt_service_1 = require("./modules/companion/companionStt.service");
 const server = http_1.default.createServer(app_1.app);
 const companionWebSocket = (0, companion_websocket_1.attachCompanionWebSocket)(server);
 server.listen(env_1.env.PORT, () => {
     logger_1.logger.info(`Saya.ai backend running on port ${env_1.env.PORT}`);
     (0, scheduler_1.startScheduler)();
+    void companionStt_service_1.companionSttService.checkProviderHealth();
 });
 function shutdown(signal) {
     logger_1.logger.info('[SERVER] Shutdown requested', { signal });

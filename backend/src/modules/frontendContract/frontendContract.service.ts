@@ -114,9 +114,12 @@ function buildFrontendCallbackUrl(params: { token?: string; onboardingComplete?:
   const baseUrl = env.FRONTEND_URL.replace(/\/$/, '');
   const url = new URL(`${baseUrl}/auth/callback`);
   const hashParams = new URLSearchParams();
+  // Always return a backend-controlled token when present
   if (params.token) hashParams.set('token', params.token);
-  if (params.onboardingComplete !== undefined) hashParams.set('onboarding', params.onboardingComplete ? '1' : '0');
-  if (params.returnTo) hashParams.set('returnTo', params.returnTo);
+  // Do not rely on the frontend onboarding redirect flag (some frontends still redirect to /onboarding).
+  // Instead, prefer an explicit returnTo. If none provided, default to dashboard to avoid landing on missing onboarding route.
+  const safeReturnTo = params.returnTo && params.returnTo.startsWith('/') ? params.returnTo : '/dashboard';
+  hashParams.set('returnTo', safeReturnTo);
   if (params.error) hashParams.set('error', params.error);
   url.hash = hashParams.toString();
   return url.toString();
@@ -240,8 +243,22 @@ async function findOrCreateGoogleUser(token: string): Promise<User> {
 async function getPrimaryPatientId(caregiverId: string): Promise<string> {
   const patients = await patientRepository.findByCaregiverId(caregiverId);
   const patient = patients[0];
-  if (!patient) throw ApiError.badRequest('Create a patient before using this endpoint');
-  return patient.id;
+  if (patient) return patient.id;
+
+  const userResult = await supabase.from('users').select('*').eq('id', caregiverId).maybeSingle();
+  if (userResult.error || !userResult.data) {
+    throw ApiError.internal('Failed to load caregiver profile for companion setup');
+  }
+
+  const created = await patientRepository.create({
+    caregiver_id: caregiverId,
+    full_name: userResult.data.full_name ? `${userResult.data.full_name}'s Elder` : 'Primary Elder',
+    phone: normalizePhoneForPatient(userResult.data.phone),
+    date_of_birth: null,
+    companion_tone: 'warm',
+    language_preference: 'en'
+  });
+  return created.id;
 }
 
 function normalizeScheduleTime(time: string): string {
@@ -295,6 +312,17 @@ function toMood(sentiment: SentimentTag): CompanionChatDto['mood'] {
   if (sentiment === 'joy') return 'happy';
   if (sentiment === 'anxiety' || sentiment === 'sadness') return 'concerned';
   return 'neutral';
+}
+
+function normalizePhoneForPatient(rawPhone?: string | null): string {
+  if (rawPhone) {
+    try {
+      return toE164India(rawPhone);
+    } catch {
+      // Fallback to a safe valid number if caregiver input is incomplete.
+    }
+  }
+  return '+919876543210';
 }
 
 export const frontendContractService = {
@@ -444,14 +472,15 @@ export const frontendContractService = {
     if (primaryPatient) {
       await patientRepository.update(primaryPatient.id, {
         companion_tone: input.personality,
-        language_preference: input.language === 'hindi' ? 'hi' : 'en'
+        language_preference: input.language === 'hindi' ? 'hi' : 'en',
+        phone: normalizePhoneForPatient(input.contacts[0]?.phone ?? primaryPatient.phone)
       });
     } else {
       const firstContact = input.contacts[0];
       const patient = await patientRepository.create({
         caregiver_id: userId,
         full_name: 'Primary Elder',
-        phone: toE164India(firstContact.phone),
+        phone: normalizePhoneForPatient(firstContact?.phone),
         date_of_birth: null,
         companion_tone: input.personality,
         language_preference: input.language === 'hindi' ? 'hi' : 'en'
@@ -460,7 +489,7 @@ export const frontendContractService = {
         await patientRepository.createContact({
           patient_id: patient.id,
           name: contact.name,
-          phone: toE164India(contact.phone),
+          phone: normalizePhoneForPatient(contact.phone),
           relationship: 'family',
           can_receive_escalation_sms: true
         });

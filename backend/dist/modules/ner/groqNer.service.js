@@ -22,7 +22,7 @@ const MedicineSchema = zod_1.z.object({
 exports.groqNerService = {
     async extractMedicines(ocrText) {
         const completion = await (0, timeout_1.withTimeout)(groq.chat.completions.create({
-            model: 'llama3-70b-8192',
+            model: 'llama-3.3-70b-versatile',
             temperature: 0,
             max_tokens: 2000,
             messages: [

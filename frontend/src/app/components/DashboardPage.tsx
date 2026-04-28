@@ -5,6 +5,7 @@ import { CallsRemainingWidget }    from "./dashboard/widgets/CallsRemainingWidge
 import { CallsMissedWidget }       from "./dashboard/widgets/CallsMissedWidget";
 import { UpcomingCallsPanel }      from "./dashboard/widgets/UpcomingCallsPanel";
 import { ScheduledRemindersPanel } from "./dashboard/widgets/ScheduledRemindersPanel";
+import { SketchRobotAnimation }    from "./dashboard/SketchRobotAnimation";
 import { AlertTriangle, Clock } from "lucide-react";
 import { useUser } from "../hooks/useUser";
 import { api, type DashboardSummaryDto } from "../lib/api";
@@ -148,6 +149,9 @@ export function DashboardPage() {
               {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
+          
+          {/* Animated sketching robot on the right */}
+          <SketchRobotAnimation />
         </div>
 
 
@@ -162,7 +166,7 @@ export function DashboardPage() {
             overflow: "hidden",
           }}
         >
-          <MoodWidget />
+          <MoodWidget mood={summary?.lastMood} />
           <CallsRemainingWidget count={upcomingCount} />
           <CallsMissedWidget count={missedCount} />
         </div>

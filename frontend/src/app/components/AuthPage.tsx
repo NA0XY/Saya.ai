@@ -6,7 +6,7 @@ export function AuthPage() {
 
   const handleAuth = async () => {
     try {
-      const url = await startGoogleOAuth("/onboarding");
+      const url = await startGoogleOAuth("/dashboard");
       window.location.assign(url);
     } catch (error) {
       console.error("Failed to start Google OAuth", error);
