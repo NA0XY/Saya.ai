@@ -11,12 +11,6 @@ export type UserProfile = {
   interests?: string[];
 };
 
-export type OnboardingPayload = {
-  contacts: Array<{ name: string; phone: string }>;
-  personality: "warm" | "formal" | "playful";
-  language: "english" | "hindi";
-};
-
 export type SettingsPayload = {
   contacts?: Array<{ name: string; phone: string }>;
   personality?: "warm" | "formal" | "playful";
@@ -187,7 +181,7 @@ export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-export async function startGoogleOAuth(returnTo = "/onboarding"): Promise<string> {
+export async function startGoogleOAuth(returnTo = "/dashboard"): Promise<string> {
   const result = await request<{ url: string }>(`/auth/google/start?returnTo=${encodeURIComponent(returnTo)}`);
   return result.url;
 }
@@ -251,11 +245,6 @@ export const api = {
   },
 
   profile: () => request<UserProfile>("/user/profile"),
-
-  submitOnboarding: (payload: OnboardingPayload) => request<{ status: string }>("/user/onboarding", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  }),
 
   updateSettings: (payload: SettingsPayload) => request<{ status: string }>("/user/settings", {
     method: "PUT",

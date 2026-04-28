@@ -848,7 +848,7 @@ export function CompanionInterface() {
           return;
         }
       } catch {
-        // Keep silent here; auth/onboarding flow will surface its own error states.
+          // Keep silent here; auth flow will surface its own error states.
       }
       setLoadingHistory(false);
       setLoadingMemories(false);
