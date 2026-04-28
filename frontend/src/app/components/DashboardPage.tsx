@@ -166,7 +166,7 @@ export function DashboardPage() {
             overflow: "hidden",
           }}
         >
-          <MoodWidget />
+          <MoodWidget mood={summary?.lastMood} />
           <CallsRemainingWidget count={upcomingCount} />
           <CallsMissedWidget count={missedCount} />
         </div>

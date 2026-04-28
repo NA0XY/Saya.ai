@@ -147,11 +147,14 @@ export type CallLogDto = {
   created_at: string;
 };
 
+export type MoodState = 'happy' | 'neutral' | 'concerned';
+
 export type DashboardSummaryDto = {
   patients: Array<{ id: string; full_name: string; phone: string; created_at: string; updated_at: string }>;
   recentAlerts: AlertDto[];
   activeSchedules: MedicationScheduleDto[];
   recentCallLogs: CallLogDto[];
+  lastMood?: MoodState | null;
 };
 
 type ApiEnvelope<T> = {

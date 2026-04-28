@@ -5,16 +5,17 @@ import { SketchCard } from "./SketchCard";
 const moods: Record<string, { emoji: string; color: string }> = {
   happy:   { emoji: "😊", color: "#22c55e" },
   calm:    { emoji: "😌", color: "#60a5fa" },
-  anxious: { emoji: "😟", color: "#f59e0b" },
-  sad:     { emoji: "😢", color: "#ef4444" },
+  concerned: { emoji: "😟", color: "#f59e0b" },
   neutral: { emoji: "😐", color: "#a3a3a3" },
 };
 
-// In production, this would come from the API
-const currentMood = "anxious";
+export interface MoodWidgetProps {
+  mood?: string | null;
+}
 
-export function MoodWidget() {
-  const mood = moods[currentMood] || moods.neutral;
+export function MoodWidget({ mood }: MoodWidgetProps) {
+  const displayMood = mood || "neutral";
+  const moodData = moods[displayMood] || moods.neutral;
 
   return (
     <SketchCard seed={14} className="flex flex-col h-full" style={{ padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -38,7 +39,7 @@ export function MoodWidget() {
         marginBottom: "12px",
         textAlign: "center",
       }}>
-        {mood.emoji}
+        {moodData.emoji}
       </div>
 
       {/* Mood label */}
@@ -46,11 +47,11 @@ export function MoodWidget() {
         fontFamily: "'Caveat', cursive",
         fontWeight: 700,
         fontSize: "32px",
-        color: mood.color,
+        color: moodData.color,
         textTransform: "capitalize",
         textAlign: "center",
       }}>
-        {currentMood}
+        {displayMood}
       </span>
     </SketchCard>
   );
