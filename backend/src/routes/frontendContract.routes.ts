@@ -14,6 +14,9 @@ import {
 
 export const frontendContractRouter = Router();
 
+frontendContractRouter.get('/auth/google/start', frontendContractController.googleOAuthStart);
+frontendContractRouter.get('/auth/google/callback', frontendContractController.googleOAuthCallback);
+
 frontendContractRouter.post('/auth/google', validateBody(GoogleAuthSchema), frontendContractController.googleAuth);
 
 frontendContractRouter.get('/user/profile', authMiddleware, frontendContractController.profile);

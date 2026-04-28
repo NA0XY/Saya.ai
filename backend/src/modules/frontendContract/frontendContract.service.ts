@@ -4,6 +4,7 @@ import axios from 'axios';
 import fs from 'fs';
 import { randomBytes } from 'crypto';
 import { env } from '../../config/env';
+import { logger } from '../../config/logger';
 import { supabase } from '../../config/supabase';
 import type { UploadedFile } from '../../middleware/upload.middleware';
 import type { Alert, DemoVital, MedicationSchedule, User } from '../../types/database';
@@ -38,6 +39,85 @@ interface GoogleTokenInfo {
   sub?: string;
 }
 
+interface GoogleTokenExchangeResponse {
+  access_token?: string;
+  expires_in?: number;
+  id_token?: string;
+  scope?: string;
+  token_type?: string;
+}
+
+interface OAuthStatePayload {
+  returnTo?: string;
+}
+
+const GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_OAUTH_SCOPES = ['openid', 'email', 'profile'];
+
+function sanitizeReturnTo(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  if (!value.startsWith('/') || value.startsWith('//')) return undefined;
+  return value;
+}
+
+function signOAuthState(payload: OAuthStatePayload): string {
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: '10m' });
+}
+
+function verifyOAuthState(state: string): OAuthStatePayload | null {
+  try {
+    return jwt.verify(state, env.JWT_SECRET) as OAuthStatePayload;
+  } catch {
+    return null;
+  }
+}
+
+function buildGoogleOAuthUrl(state: string): string {
+  const params = new URLSearchParams({
+    client_id: env.GOOGLE_CLIENT_ID,
+    redirect_uri: env.GOOGLE_OAUTH_REDIRECT_URL,
+    response_type: 'code',
+    scope: GOOGLE_OAUTH_SCOPES.join(' '),
+    include_granted_scopes: 'true',
+    access_type: 'online',
+    prompt: 'select_account',
+    state
+  });
+  return `${GOOGLE_OAUTH_AUTHORIZE_URL}?${params.toString()}`;
+}
+
+async function exchangeGoogleCodeForToken(code: string): Promise<GoogleTokenExchangeResponse> {
+  const params = new URLSearchParams({
+    code,
+    client_id: env.GOOGLE_CLIENT_ID,
+    client_secret: env.GOOGLE_CLIENT_SECRET,
+    redirect_uri: env.GOOGLE_OAUTH_REDIRECT_URL,
+    grant_type: 'authorization_code'
+  });
+
+  const { data } = await axios.post<GoogleTokenExchangeResponse>(GOOGLE_TOKEN_URL, params.toString(), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    timeout: 10000
+  }).catch((error: unknown) => {
+    throw ApiError.badGateway(`Google token exchange failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
+
+  return data;
+}
+
+function buildFrontendCallbackUrl(params: { token?: string; onboardingComplete?: boolean; returnTo?: string; error?: string }): string {
+  const baseUrl = env.FRONTEND_URL.replace(/\/$/, '');
+  const url = new URL(`${baseUrl}/auth/callback`);
+  const hashParams = new URLSearchParams();
+  if (params.token) hashParams.set('token', params.token);
+  if (params.onboardingComplete !== undefined) hashParams.set('onboarding', params.onboardingComplete ? '1' : '0');
+  if (params.returnTo) hashParams.set('returnTo', params.returnTo);
+  if (params.error) hashParams.set('error', params.error);
+  url.hash = hashParams.toString();
+  return url.toString();
+}
+
 function signToken(user: Pick<User, 'id' | 'email' | 'role'>): string {
   const options: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'] };
   return jwt.sign({ id: user.id, email: user.email, role: user.role }, env.JWT_SECRET, options);
@@ -59,36 +139,86 @@ async function getOnboardingComplete(userId: string): Promise<boolean> {
 }
 
 async function verifyGoogleToken(token: string): Promise<GoogleTokenInfo> {
-  const { data } = await axios.get<GoogleTokenInfo>('https://oauth2.googleapis.com/tokeninfo', {
-    params: { id_token: token },
-    timeout: 5000
-  }).catch((error: unknown) => {
-    throw ApiError.unauthorized(`Invalid Google token: ${error instanceof Error ? error.message : String(error)}`);
-  });
+  try {
+    logger.debug('[GOOGLE_TOKEN] Verifying token');
+    const { data } = await axios.get<GoogleTokenInfo>('https://oauth2.googleapis.com/tokeninfo', {
+      params: { id_token: token },
+      timeout: 5000
+    }).catch((error: unknown) => {
+      throw ApiError.unauthorized(`Invalid Google token: ${error instanceof Error ? error.message : String(error)}`);
+    });
 
-  if (!data.email) throw ApiError.unauthorized('Google token does not include an email');
-  if (data.email_verified === false || data.email_verified === 'false') throw ApiError.unauthorized('Google email is not verified');
-  if (env.GOOGLE_CLIENT_ID && data.aud !== env.GOOGLE_CLIENT_ID) throw ApiError.unauthorized('Google token audience is not allowed');
-  return data;
+    if (!data.email) throw ApiError.unauthorized('Google token does not include an email');
+    if (data.email_verified === false || data.email_verified === 'false') throw ApiError.unauthorized('Google email is not verified');
+    if (env.GOOGLE_CLIENT_ID && data.aud !== env.GOOGLE_CLIENT_ID) {
+      logger.warn('[GOOGLE_TOKEN] Token audience mismatch', { expected: env.GOOGLE_CLIENT_ID, got: data.aud });
+      throw ApiError.unauthorized('Google token audience is not allowed');
+    }
+    logger.debug('[GOOGLE_TOKEN] Token verified', { email: data.email, aud: data.aud });
+    return data;
+  } catch (error) {
+    logger.error('[GOOGLE_TOKEN] Token verification failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    throw error;
+  }
 }
 
 async function findOrCreateGoogleUser(token: string): Promise<User> {
-  const profile = await verifyGoogleToken(token);
-  const email = profile.email!.toLowerCase();
-  const existing = await supabase.from('users').select('*').eq('email', email).maybeSingle();
-  if (existing.error) throw ApiError.internal('Failed to load Google user');
-  if (existing.data) return existing.data;
+  try {
+    logger.debug('[GOOGLE_USER] Finding or creating user from token');
+    const profile = await verifyGoogleToken(token);
+    const email = profile.email!.toLowerCase();
+    logger.debug('[GOOGLE_USER] Checking for existing user', { email });
+    const existing = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    if (existing.error) {
+      logger.error('[GOOGLE_USER] Failed to query users', {
+        email,
+        code: existing.error.code,
+        message: existing.error.message,
+        details: existing.error.details,
+        hint: existing.error.hint
+      });
+      if (existing.error.code === 'PGRST205') {
+        throw ApiError.internal('Database schema is not initialized. Run Supabase migrations to create public.users.');
+      }
+      throw ApiError.internal('Failed to load Google user');
+    }
+    if (existing.data) {
+      logger.info('[GOOGLE_USER] Existing user found', { userId: existing.data.id, email });
+      return existing.data;
+    }
 
-  const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
-  const result = await supabase.from('users').insert({
-    email,
-    password_hash: passwordHash,
-    full_name: profile.name ?? email.split('@')[0],
-    phone: '+910000000000',
-    role: 'caregiver'
-  }).select('*').single();
-  if (result.error || !result.data) throw ApiError.internal('Failed to create Google user');
-  return result.data;
+    logger.info('[GOOGLE_USER] Creating new user', { email });
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+    const result = await supabase.from('users').insert({
+      email,
+      password_hash: passwordHash,
+      full_name: profile.name ?? email.split('@')[0],
+      phone: '+910000000000',
+      role: 'caregiver'
+    }).select('*').single();
+    if (result.error || !result.data) {
+      logger.error('[GOOGLE_USER] Failed to create user', {
+        email,
+        code: result.error?.code,
+        message: result.error?.message,
+        details: result.error?.details,
+        hint: result.error?.hint
+      });
+      if (result.error?.code === 'PGRST205') {
+        throw ApiError.internal('Database schema is not initialized. Run Supabase migrations to create public.users.');
+      }
+      throw ApiError.internal('Failed to create Google user');
+    }
+    logger.info('[GOOGLE_USER] New user created', { userId: result.data.id, email });
+    return result.data;
+  } catch (error) {
+    logger.error('[GOOGLE_USER] User find/create failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    throw error;
+  }
 }
 
 async function getPrimaryPatientId(caregiverId: string): Promise<string> {
@@ -152,9 +282,73 @@ function toMood(sentiment: SentimentTag): CompanionChatDto['mood'] {
 }
 
 export const frontendContractService = {
+  async startGoogleOAuth(returnTo?: string): Promise<string> {
+    const state = signOAuthState({ returnTo: sanitizeReturnTo(returnTo) });
+    return buildGoogleOAuthUrl(state);
+  },
+
+  async handleGoogleOAuthCallback(query: {
+    code?: string;
+    state?: string;
+    error?: string;
+    error_description?: string;
+  }): Promise<string> {
+    if (query.error) {
+      logger.warn('[AUTH] Google OAuth denied', { error: query.error, description: query.error_description });
+      return buildFrontendCallbackUrl({ error: query.error });
+    }
+
+    if (!query.state) {
+      return buildFrontendCallbackUrl({ error: 'missing_state' });
+    }
+
+    const statePayload = verifyOAuthState(query.state);
+    if (!statePayload) {
+      return buildFrontendCallbackUrl({ error: 'invalid_state' });
+    }
+
+    if (!query.code) {
+      return buildFrontendCallbackUrl({ error: 'missing_code', returnTo: sanitizeReturnTo(statePayload.returnTo) });
+    }
+
+    try {
+      const tokenResponse = await exchangeGoogleCodeForToken(query.code);
+      if (!tokenResponse.id_token) {
+        return buildFrontendCallbackUrl({ error: 'missing_id_token', returnTo: sanitizeReturnTo(statePayload.returnTo) });
+      }
+
+      const user = await findOrCreateGoogleUser(tokenResponse.id_token);
+      const onboardingComplete = await getOnboardingComplete(user.id);
+      const token = signToken(user);
+      return buildFrontendCallbackUrl({
+        token,
+        onboardingComplete,
+        returnTo: sanitizeReturnTo(statePayload.returnTo)
+      });
+    } catch (error) {
+      logger.error('[AUTH] Google OAuth callback failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return buildFrontendCallbackUrl({ error: 'oauth_failed', returnTo: sanitizeReturnTo(statePayload.returnTo) });
+    }
+  },
+
   async authenticateWithGoogle(token: string): Promise<{ user: UserProfileDto; token: string }> {
-    const user = await findOrCreateGoogleUser(token);
-    return { user: toUserProfile(user, await getOnboardingComplete(user.id)), token: signToken(user) };
+    try {
+      logger.info('[AUTH] Google authentication attempt');
+      const user = await findOrCreateGoogleUser(token);
+      logger.info('[AUTH] Google user found or created', { userId: user.id, email: user.email });
+      const onboardingComplete = await getOnboardingComplete(user.id);
+      const jwtToken = signToken(user);
+      logger.info('[AUTH] Google authentication successful', { userId: user.id });
+      return { user: toUserProfile(user, onboardingComplete), token: jwtToken };
+    } catch (error) {
+      logger.error('[AUTH] Google authentication failed', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
   },
 
   async getProfile(userId: string): Promise<UserProfileDto> {

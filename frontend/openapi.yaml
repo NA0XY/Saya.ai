@@ -1,0 +1,355 @@
+openapi: 3.0.3
+info:
+  title: SAYA.AI API
+  description: Industry standard API contract for Saya.ai elder care monitoring platform.
+  version: 1.0.0
+servers:
+  - url: https://api.saya.ai/v1
+    description: Production server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        onboardingComplete:
+          type: boolean
+        role:
+          type: string
+          enum: [caregiver, parent]
+
+    OnboardingData:
+      type: object
+      required:
+        - contacts
+        - personality
+        - language
+      properties:
+        contacts:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              phone:
+                type: string
+        personality:
+          type: string
+          enum: [warm, formal, playful]
+        language:
+          type: string
+          enum: [english, hindi]
+
+    SafetyStatus:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        statusColor:
+          type: string
+          enum: [green, orange, red, blue]
+        icon:
+          type: string
+        description:
+          type: string
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [medication, safety, health]
+        severity:
+          type: string
+          enum: [low, medium, high]
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    Medicine:
+      type: object
+      properties:
+        id:
+          type: string
+        drugName:
+          type: string
+        dosage:
+          type: string
+        frequency:
+          type: string
+        confidence:
+          type: string
+          enum: [high, low]
+
+    HealthVitals:
+      type: object
+      properties:
+        heartRate:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date-time
+              value:
+                type: integer
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date-time
+              value:
+                type: integer
+        vitalsStatus:
+          type: string
+          enum: [stable, warning, critical]
+
+    CompanionChatResponse:
+      type: object
+      properties:
+        response:
+          type: string
+        mood:
+          type: string
+          enum: [neutral, happy, concerned]
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [call_family, reminder]
+              data:
+                type: object
+
+paths:
+  /auth/google:
+    post:
+      summary: Authenticate via Google
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+                  token:
+                    type: string
+
+  /user/profile:
+    get:
+      summary: Get user profile
+      tags: [User]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /user/onboarding:
+    post:
+      summary: Submit onboarding data
+      tags: [User]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingData'
+      responses:
+        '200':
+          description: Onboarding successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /dashboard/safety-status:
+    get:
+      summary: Get safety status metrics
+      tags: [Dashboard]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of safety statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SafetyStatus'
+
+  /dashboard/alerts:
+    get:
+      summary: Get recent alerts
+      tags: [Dashboard]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+
+  /dashboard/health-vitals:
+    get:
+      summary: Get historical vitals
+      tags: [Dashboard]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d]
+      responses:
+        '200':
+          description: Health metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthVitals'
+
+  /medications/extract:
+    post:
+      summary: Extract medicine from prescription image
+      tags: [Medications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Extracted medicines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  medicines:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Medicine'
+
+  /medications/schedule:
+    post:
+      summary: Schedule a medication reminder
+      tags: [Medications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                drugName:
+                  type: string
+                time:
+                  type: string
+                customMessage:
+                  type: string
+      responses:
+        '200':
+          description: Scheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+
+  /companion/chat:
+    post:
+      summary: Chat with AI companion
+      tags: [Companion]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                context:
+                  type: object
+                  properties:
+                    lastMood:
+                      type: string
+                    location:
+                      type: string
+      responses:
+        '200':
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanionChatResponse'

@@ -3,12 +3,12 @@ import type { Language } from '../../types/common';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { buildConfirmedMedicationSMS, buildEmotionalEscalationSMS, buildMissedMedicationSMS } from '../../utils/language';
-import { exotelClient } from './exotel.client';
+import { twilioClient } from './twilio.client';
 
 async function sendToContacts(contacts: ApprovedContact[], body: string): Promise<void> {
   await Promise.all(contacts.map(async (contact) => {
     try {
-      await exotelClient.sendSms({ to: contact.phone, from: env.EXOTEL_CALLER_ID, body });
+      await twilioClient.sendSms({ to: contact.phone, from: env.TWILIO_PHONE_NUMBER, body });
       logger.info('[SMS] Sent', { contactId: contact.id });
     } catch (error) {
       logger.error('[SMS] Failed', { contactId: contact.id, error: error instanceof Error ? error.message : String(error) });

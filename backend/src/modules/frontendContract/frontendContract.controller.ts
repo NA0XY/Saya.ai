@@ -11,6 +11,22 @@ import type {
 } from './frontendContract.types';
 
 export const frontendContractController = {
+  googleOAuthStart: asyncHandler(async (req: Request, res: Response) => {
+    const returnTo = req.query.returnTo as string | undefined;
+    const url = await frontendContractService.startGoogleOAuth(returnTo);
+    res.json({ url });
+  }),
+
+  googleOAuthCallback: asyncHandler(async (req: Request, res: Response) => {
+    const callbackUrl = await frontendContractService.handleGoogleOAuthCallback(req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+      error_description?: string;
+    });
+    res.redirect(callbackUrl);
+  }),
+
   googleAuth: asyncHandler(async (req: Request<object, object, GoogleAuthInput>, res: Response) => {
     res.json(await frontendContractService.authenticateWithGoogle(req.body.token));
   }),
