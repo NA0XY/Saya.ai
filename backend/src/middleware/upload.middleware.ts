@@ -23,7 +23,20 @@ export function handlePrescriptionUpload(req: Request, res: Response, next: Next
       return;
     }
     if (req.file) {
-            req.file.publicPath = path.join('uploads', 'prescriptions', req.file.filename).split(path.sep).join('/');
+      req.file.publicPath = path.join('uploads', 'prescriptions', req.file.filename).split(path.sep).join('/');
+    }
+    next();
+  });
+}
+
+export function handleMedicineImageUpload(req: Request, res: Response, next: NextFunction): void {
+  prescriptionUpload.single('image')(req, res, (error: unknown) => {
+    if (error) {
+      next(error instanceof Error ? error : new Error('Upload failed'));
+      return;
+    }
+    if (req.file) {
+      req.file.publicPath = path.join('uploads', 'prescriptions', req.file.filename).split(path.sep).join('/');
     }
     next();
   });

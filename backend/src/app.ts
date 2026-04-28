@@ -9,6 +9,7 @@ import { logger } from './config/logger';
 import { errorMiddleware } from './middleware/error.middleware';
 import { generalLimiter } from './middleware/rateLimit.middleware';
 import { requestIdMiddleware } from './middleware/requestId.middleware';
+import { frontendContractRouter } from './routes/frontendContract.routes';
 import { router } from './routes';
 import { webhookRouter } from './routes/webhook.routes';
 import { supabase } from './config/supabase';
@@ -36,6 +37,8 @@ app.get('/ready', async (_req, res) => {
     latency_ms: Date.now() - startedAt
   });
 });
+app.use('/v1', frontendContractRouter);
+app.use('/api/v1', frontendContractRouter);
 app.use('/api', router);
 app.use('/webhooks', webhookRouter);
 app.use((_req, _res, next) => next(ApiError.notFound('Route')));

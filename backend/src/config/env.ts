@@ -10,6 +10,7 @@ export const EnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   GROQ_API_KEY: z.string().min(1),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1),
+  GOOGLE_CLIENT_ID: z.string().optional().default(''),
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   AWS_REGION: z.string().min(1).default('ap-south-1'),
