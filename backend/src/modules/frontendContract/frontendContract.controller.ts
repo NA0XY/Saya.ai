@@ -57,6 +57,10 @@ export const frontendContractController = {
     res.json(await frontendContractService.getAlerts(req.user!.id));
   }),
 
+  dashboardSummary: asyncHandler(async (req: Request, res: Response) => {
+    res.json(await frontendContractService.getDashboardSummary(req.user!.id));
+  }),
+
   healthVitals: asyncHandler(async (req: Request<object, object, object, HealthVitalsQuery>, res: Response) => {
     res.json(await frontendContractService.getHealthVitals(req.user!.id, req.query));
   }),

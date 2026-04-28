@@ -1,154 +1,209 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  LayoutDashboard, Calendar, Users, BarChart2,
-  MessageCircle, CreditCard, FileText, Settings, LogOut,
-} from "lucide-react";
+import { useUser } from "../../hooks/useUser";
+import { RobotMedicineScene } from "./RobotMedicineScene";
 
-const SG = "'Space Grotesk', sans-serif";
-const IN = "'Inter', sans-serif";
-
-const SIDEBAR_BG   = "#F5A623";   // warm amber-yellow
-const TEXT_DARK    = "#1A1A1A";
-const TEXT_MUTED   = "rgba(26,26,26,0.55)";
-const TEXT_LABEL   = "rgba(26,26,26,0.4)";
-const DIVIDER      = "rgba(26,26,26,0.14)";
-const ACTIVE_BG    = "rgba(255,255,255,0.30)";
-
-function NavItem({
-  to, icon: Icon, label,
-}: { to: string; icon: React.ElementType; label: string }) {
-  const { pathname } = useLocation();
-  const active = pathname === to;
-
-  return (
-    <Link
-      to={to}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        padding: "7px 12px",
-        borderRadius: "10px",
-        fontFamily: IN,
-        fontSize: "13px",
-        fontWeight: active ? 600 : 400,
-        color: active ? TEXT_DARK : TEXT_MUTED,
-        background: active ? ACTIVE_BG : "transparent",
-        borderLeft: active ? `2px solid ${TEXT_DARK}` : "2px solid transparent",
-        textDecoration: "none",
-        transition: "all 0.15s ease",
-        marginBottom: "2px",
-      }}
-    >
-      <Icon
-        size={15}
-        style={{ color: active ? TEXT_DARK : TEXT_MUTED, flexShrink: 0 }}
-      />
-      {label}
-    </Link>
-  );
-}
+const SIDEBAR_WIDTH = 256;
 
 export function SidebarNav() {
+  const { pathname } = useLocation();
+  const { user, avatarUrl, isLoggedIn, logout } = useUser();
+
+  const displayName = user?.name || "Guest";
+
   return (
-    <aside
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "256px",
-        height: "100vh",
-        background: SIDEBAR_BG,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        zIndex: 50,
-      }}
-    >
-      {/* Brand */}
-      <div
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap');
+        
+        .sketch-nav-item {
+          display: block;
+          padding: 8px 24px;
+          color: #1A1A1A;
+          text-decoration: none;
+          font-family: 'Caveat', cursive;
+          font-size: 26px;
+          transition: all 0.2s;
+          position: relative;
+        }
+        .sketch-nav-item:hover {
+          color: #1A1A1A;
+          transform: scale(1.15) translateX(5px) rotate(-2deg);
+          text-shadow: 2px 2px 0px rgba(255,255,255,0.4);
+        }
+        .sketch-nav-item.active {
+          font-weight: 700;
+        }
+        /* sketchy underline for active item */
+        .sketch-nav-item.active::after {
+          content: '';
+          position: absolute;
+          left: 20px;
+          bottom: 6px;
+          width: 60%;
+          height: 3px;
+          background: #E85D2A;
+          border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+          transform: rotate(-2deg);
+        }
+
+        .sketch-button {
+          background: transparent;
+          border: 2px solid #1A1A1A;
+          border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+          padding: 6px 32px;
+          font-family: 'Caveat', cursive;
+          font-size: 22px;
+          color: #1A1A1A;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: inline-block;
+          text-align: center;
+          margin-top: 12px;
+          box-shadow: 2px 3px 0px rgba(26,26,26,0.2);
+        }
+        .sketch-button:hover {
+          transform: translateY(1px);
+          box-shadow: 1px 1px 0px rgba(26,26,26,0.2);
+          background: rgba(239,68,68,0.08);
+          border-color: #EF4444;
+          color: #EF4444;
+        }
+
+        .sidebar-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid #1A1A1A;
+          box-shadow: 2px 2px 0px rgba(26,26,26,0.15);
+        }
+      `}</style>
+      
+      <aside
         style={{
-          padding: "20px 20px 16px",
-          borderBottom: `1px solid ${DIVIDER}`,
-          flexShrink: 0,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: `${SIDEBAR_WIDTH}px`,
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          zIndex: 50,
+          background: "transparent",
         }}
       >
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
-          <div
+        <div style={{ position: "relative", flex: 1 }}>
+          {/* Sketchy curved background for top area */}
+          <svg
             style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "8px",
-              background: TEXT_DARK,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '380px',
+              zIndex: -1,
             }}
+            viewBox="0 0 256 380"
+            preserveAspectRatio="none"
           >
-            <span style={{ fontFamily: SG, fontWeight: 800, fontSize: "14px", color: SIDEBAR_BG }}>S</span>
+            {/* Main colored shape */}
+            <path
+              d="M -10 -10 L 250 -10 C 255 150, 160 270, -10 360 Z"
+              fill="#E85D2A"
+              stroke="#1A1A1A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {/* Sketchy double-line effect */}
+            <path
+              d="M 2 2 L 246 2 C 250 155, 155 272, 2 355 Z"
+              fill="none"
+              stroke="#1A1A1A"
+              strokeWidth="1.5"
+              opacity="0.6"
+            />
+            {/* Some scribbles inside for sketch pen feel */}
+            <path d="M 20 20 Q 40 30 20 40 T 30 60" fill="none" stroke="#D4531F" strokeWidth="2" opacity="0.4" />
+            <path d="M 180 50 Q 200 60 170 80 T 190 110" fill="none" stroke="#D4531F" strokeWidth="2" opacity="0.4" />
+          </svg>
+
+          {/* Top Content */}
+          <div style={{ padding: "40px 0 0 20px" }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <h1 style={{
+                fontFamily: "'Caveat', cursive",
+                fontSize: "36px",
+                fontWeight: 700,
+                color: "#1A1A1A",
+                margin: "0 0 30px 10px",
+                transform: "rotate(-2deg)"
+              }}>
+                Saya.ai
+              </h1>
+            </Link>
+
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Link to="/dashboard" className={`sketch-nav-item ${pathname === '/dashboard' ? 'active' : ''}`}>
+                dashboard
+              </Link>
+              <Link to="/companion" className={`sketch-nav-item ${pathname === '/companion' ? 'active' : ''}`}>
+                companion
+              </Link>
+              <Link to="/dashboard/settings" className={`sketch-nav-item ${pathname === '/dashboard/settings' ? 'active' : ''}`}>
+                settings
+              </Link>
+            </nav>
           </div>
-          <span style={{ fontFamily: SG, fontWeight: 700, fontSize: "16px", color: TEXT_DARK, letterSpacing: "-0.02em" }}>
-            SAYA.AI
-          </span>
-        </Link>
-      </div>
+        </div>
 
-      {/* Navigation */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
-        {/* General */}
-        <p
-          style={{
-            fontFamily: IN, fontSize: "9px", fontWeight: 700,
-            color: TEXT_LABEL, letterSpacing: "0.1em", textTransform: "uppercase",
-            padding: "0 12px", margin: "0 0 6px",
-          }}
-        >
-          General
-        </p>
-        <NavItem to="/dashboard"             icon={LayoutDashboard} label="Dashboard" />
-        <NavItem to="/dashboard/medications" icon={Calendar}        label="Medication schedule" />
-        <NavItem to="/dashboard/patients"    icon={Users}           label="Patient profiles" />
-        <NavItem to="/dashboard/statistics"  icon={BarChart2}       label="Statistics & reports" />
+        {/* Bottom Content (Illustration + User + Logout) */}
+        <div style={{ padding: "0 0 30px 10px" }}>
+          {/* Animated robot scene */}
+          <div style={{ width: "220px", marginBottom: "12px" }}>
+            <RobotMedicineScene />
+          </div>
+          {/* User info with avatar */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="sidebar-avatar"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                background: "#E85D2A",
+                border: "2px solid #1A1A1A",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "'Caveat', cursive",
+                fontSize: "22px",
+                fontWeight: 700,
+                color: "#1A1A1A",
+                boxShadow: "2px 2px 0px rgba(26,26,26,0.15)",
+              }}>
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span style={{ fontFamily: "'Caveat', cursive", fontSize: "24px", color: "#1A1A1A", fontWeight: 600 }}>
+              {displayName}
+            </span>
+          </div>
 
-        {/* Tools */}
-        <p
-          style={{
-            fontFamily: IN, fontSize: "9px", fontWeight: 700,
-            color: TEXT_LABEL, letterSpacing: "0.1em", textTransform: "uppercase",
-            padding: "0 12px", margin: "20px 0 6px",
-          }}
-        >
-          Tools
-        </p>
-        <NavItem to="/companion"           icon={MessageCircle} label="Companion" />
-        <NavItem to="/dashboard/billing"   icon={CreditCard}    label="Billing" />
-        <NavItem to="/dashboard/documents" icon={FileText}       label="Documents" />
-        <NavItem to="/dashboard/settings"  icon={Settings}       label="Settings" />
-      </div>
-
-      {/* Log out */}
-      <div style={{ padding: "8px 12px 16px", borderTop: `1px solid ${DIVIDER}` }}>
-        <Link
-          to="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "7px 12px",
-            borderRadius: "10px",
-            fontFamily: IN,
-            fontSize: "13px",
-            fontWeight: 400,
-            color: TEXT_MUTED,
-            textDecoration: "none",
-          }}
-        >
-          <LogOut size={15} style={{ color: TEXT_MUTED }} />
-          Log out
-        </Link>
-      </div>
-    </aside>
+          {/* Logout button */}
+          <button className="sketch-button" onClick={logout}>
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

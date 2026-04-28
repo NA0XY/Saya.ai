@@ -504,6 +504,10 @@ export const frontendContractService = {
     return data.recentAlerts.map(toAlertDto);
   },
 
+  async getDashboardSummary(caregiverId: string) {
+    return dashboardService.getDashboardData(caregiverId);
+  },
+
   async getHealthVitals(caregiverId: string, query: HealthVitalsQuery): Promise<HealthVitalsDto> {
     const patients = await patientRepository.findByCaregiverId(caregiverId);
     const patient = patients[0];

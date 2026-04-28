@@ -27,6 +27,7 @@ frontendContractRouter.put('/user/settings', authMiddleware, validateBody(Update
 frontendContractRouter.post('/user/onboarding', authMiddleware, validateBody(FrontendOnboardingSchema), frontendContractController.onboarding);
 
 frontendContractRouter.get('/dashboard/safety-status', authMiddleware, frontendContractController.safetyStatuses);
+frontendContractRouter.get('/dashboard', authMiddleware, frontendContractController.dashboardSummary);
 frontendContractRouter.get('/dashboard/alerts', authMiddleware, frontendContractController.alerts);
 frontendContractRouter.get('/dashboard/health-vitals', authMiddleware, validateQuery(HealthVitalsQuerySchema), frontendContractController.healthVitals);
 

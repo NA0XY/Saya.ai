@@ -1,68 +1,88 @@
 import React, { useState } from "react";
 import { SketchCard } from "./SketchCard";
-import { Phone, Clock, RotateCcw, AlertCircle } from "lucide-react";
-
-type CallStatus = "confirmed" | "retrying" | "missed";
+import { Maximize2, Minimize2 } from "lucide-react";
+import type { MedicationScheduleDto } from "../../../lib/api";
 
 interface UpcomingCall {
   id: string;
   time: string;
-  contact: string;
-  nickname: string;
-  context: string;
   medicine: string;
-  status: CallStatus;
+  dosage: string;
 }
 
-const calls: UpcomingCall[] = [
-  { id: "1", time: "10:15 AM", contact: "Rajesh Sharma",  nickname: "Papa",    context: "Morning Metoprolol",     medicine: "Metoprolol 25mg",  status: "confirmed" },
-  { id: "2", time: "10:30 AM", contact: "Kamla Devi",     nickname: "Dadi Ji", context: "Breakfast Dolo-650",     medicine: "Dolo-650",         status: "retrying"  },
-  { id: "3", time: "11:00 AM", contact: "Meera Verma",    nickname: "Nani Ma", context: "Glipizide with food",    medicine: "Glipizide 5mg",    status: "missed"    },
-  { id: "4", time: "11:45 AM", contact: "Suresh Agarwal", nickname: "Dada Ji", context: "BP check reminder",      medicine: "Amlodipine 5mg",   status: "confirmed" },
-  { id: "5", time: "12:30 PM", contact: "Priya Singh",    nickname: "Mausi",   context: "Afternoon Pantoprazole", medicine: "Pantoprazole 40mg", status: "confirmed" },
-];
-
-const statusConfig: Record<CallStatus, { color: string; icon: React.ElementType; label: string; bg: string }> = {
-  confirmed: { color: "#22c55e", icon: Phone,       label: "Confirmed", bg: "#F0FDF4" },
-  retrying:  { color: "#F59E0B", icon: RotateCcw,   label: "Retrying",  bg: "#FFFBEB" },
-  missed:    { color: "#EF4444", icon: AlertCircle,  label: "Missed",    bg: "#FEF2F2" },
-};
-
-const SG = "'Space Grotesk',sans-serif";
-const IN = "'Inter',sans-serif";
+function formatScheduledTime(value: string) {
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  }
+  return value;
+}
 
 export function UpcomingCallsPanel({
   selectedId,
   onSelect,
+  calls,
 }: {
   selectedId: string;
   onSelect: (id: string) => void;
+  calls: MedicationScheduleDto[];
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
 
-  return (
+  const upcomingCalls: UpcomingCall[] = calls.map((call) => ({
+    id: call.id,
+    time: formatScheduledTime(call.scheduled_time),
+    medicine: call.medicine_name,
+    dosage: call.custom_message ? call.custom_message : call.language === "hi" ? "Hindi reminder" : "English reminder",
+  }));
+
+  const cardContent = (
     <SketchCard seed={3} className="flex flex-col h-full" style={{ padding: 0 }}>
       {/* Header */}
       <div
-        className="flex items-center justify-between flex-shrink-0"
-        style={{ padding: "14px 20px 12px", borderBottom: "1px solid rgba(26,26,26,0.07)" }}
+        style={{
+          padding: "18px 24px 14px",
+          borderBottom: "2px solid rgba(26,26,26,0.08)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
       >
         <div>
-          <h2 style={{ fontFamily: SG, fontWeight: 700, fontSize: "14px", color: "#1A1A1A", letterSpacing: "-0.01em", margin: 0 }}>
-            Upcoming calls
+          <h2 style={{
+            fontFamily: "'Caveat', cursive",
+            fontWeight: 700,
+            fontSize: "28px",
+            color: "#1A1A1A",
+            margin: 0,
+          }}>
+            Upcoming Calls
           </h2>
-          <p style={{ fontFamily: IN, fontSize: "10px", color: "rgba(26,26,26,0.4)", marginTop: "2px" }}>
+          <p style={{
+            fontFamily: "'Caveat', cursive",
+            fontSize: "18px",
+            color: "rgba(26,26,26,0.4)",
+            marginTop: "2px",
+          }}>
             Today · ordered by schedule
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div style={{ fontFamily: IN, fontSize: "10px", fontWeight: 500, color: "#22c55e", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "8px", padding: "3px 8px" }}>
-            {calls.filter(c => c.status === "confirmed").length} confirmed
-          </div>
-          <div style={{ fontFamily: IN, fontSize: "10px", fontWeight: 500, color: "#EF4444", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: "8px", padding: "3px 8px" }}>
-            {calls.filter(c => c.status === "missed").length} missed
-          </div>
-        </div>
+        <button 
+          onClick={() => setIsMaximized(!isMaximized)}
+          style={{ 
+            background: "transparent", 
+            border: "none", 
+            cursor: "pointer", 
+            color: "#1A1A1A", 
+            padding: "4px",
+            transition: "transform 0.2s"
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+        >
+          {isMaximized ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+        </button>
       </div>
 
       {/* Call list */}
@@ -70,10 +90,19 @@ export function UpcomingCallsPanel({
         className="flex-1 overflow-y-auto"
         style={{ padding: "12px 16px", scrollbarWidth: "thin", scrollbarColor: "#e5e7eb transparent" }}
       >
-        {calls.map((call) => {
-          const cfg   = statusConfig[call.status];
-          const StatusIcon = cfg.icon;
-          const active  = call.id === selectedId;
+        {upcomingCalls.length === 0 && (
+          <div style={{
+            fontFamily: "'Caveat', cursive",
+            fontSize: "22px",
+            color: "rgba(26,26,26,0.45)",
+            padding: "24px 16px",
+            textAlign: "center",
+          }}>
+            No upcoming calls scheduled.
+          </div>
+        )}
+        {upcomingCalls.map((call) => {
+          const active = call.id === selectedId;
           const hovered = call.id === hoveredId;
 
           return (
@@ -86,50 +115,47 @@ export function UpcomingCallsPanel({
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
-                gap: "14px",
-                padding: "12px 14px",
+                gap: "16px",
+                padding: "14px 16px",
                 borderRadius: "14px",
-                marginBottom: "6px",
-                background: active ? `${cfg.color}10` : hovered ? "rgba(26,26,26,0.03)" : "transparent",
-                border: active ? `1px solid ${cfg.color}35` : "1px solid transparent",
+                marginBottom: "8px",
+                background: active ? "rgba(232,93,42,0.12)" : hovered ? "rgba(26,26,26,0.03)" : "transparent",
+                border: active ? "2px solid rgba(232,93,42,0.4)" : "2px solid transparent",
                 cursor: "pointer",
                 textAlign: "left",
                 transition: "all 0.15s ease",
               }}
             >
-              {/* Status dot */}
-              <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: cfg.color, flexShrink: 0, boxShadow: `0 0 0 3px ${cfg.color}15` }} />
-
               {/* Time */}
-              <div
-                style={{ fontFamily: IN, fontSize: "12px", fontWeight: 600, color: "rgba(26,26,26,0.55)", flexShrink: 0, width: "64px", display: "flex", alignItems: "center", gap: "4px" }}
-              >
-                <Clock size={12} style={{ color: "rgba(26,26,26,0.3)" }} />
+              <div style={{
+                fontFamily: "'Caveat', cursive",
+                fontSize: "22px",
+                fontWeight: 600,
+                color: "#2D2F6E",
+                flexShrink: 0,
+                width: "90px",
+              }}>
                 {call.time}
               </div>
 
-              {/* Contact info */}
+              {/* Medicine name + dosage */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: IN, fontWeight: 700, fontSize: "14px", color: "#1A1A1A", display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  {call.nickname}
-                  <span style={{ fontFamily: IN, fontWeight: 400, fontSize: "11px", color: "rgba(26,26,26,0.4)" }}>
-                    {call.contact}
-                  </span>
+                <div style={{
+                  fontFamily: "'Caveat', cursive",
+                  fontWeight: 700,
+                  fontSize: "24px",
+                  color: "#1A1A1A",
+                }}>
+                  {call.medicine}
                 </div>
-                <div style={{ fontFamily: IN, fontSize: "11px", color: "rgba(26,26,26,0.5)", marginTop: "2px" }}>
-                  {call.context}
+                <div style={{
+                  fontFamily: "'Caveat', cursive",
+                  fontSize: "18px",
+                  color: "rgba(26,26,26,0.45)",
+                  marginTop: "2px",
+                }}>
+                  {call.dosage}
                 </div>
-              </div>
-
-              {/* Status badge */}
-              <div style={{
-                fontFamily: IN, fontSize: "10px", fontWeight: 700,
-                color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.color}25`,
-                borderRadius: "8px", padding: "4px 10px", display: "flex", alignItems: "center", gap: "4px",
-                flexShrink: 0,
-              }}>
-                <StatusIcon size={10} />
-                {cfg.label}
               </div>
             </button>
           );
@@ -137,4 +163,26 @@ export function UpcomingCallsPanel({
       </div>
     </SketchCard>
   );
+
+  if (isMaximized) {
+    return (
+      <div style={{ 
+        position: "fixed", 
+        top: 0, left: 0, right: 0, bottom: 0, 
+        zIndex: 100, 
+        padding: "40px", 
+        background: "rgba(246, 244, 235, 0.85)", 
+        backdropFilter: "blur(5px)", 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center" 
+      }}>
+        <div style={{ width: "100%", maxWidth: "800px", height: "85vh", display: "flex", flexDirection: "column" }}>
+          {cardContent}
+        </div>
+      </div>
+    );
+  }
+
+  return cardContent;
 }

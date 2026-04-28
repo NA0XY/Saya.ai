@@ -1,15 +1,82 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { SidebarNav } from "./dashboard/SidebarNav";
 import { MoodWidget }              from "./dashboard/widgets/MoodWidget";
 import { CallsRemainingWidget }    from "./dashboard/widgets/CallsRemainingWidget";
 import { CallsMissedWidget }       from "./dashboard/widgets/CallsMissedWidget";
 import { UpcomingCallsPanel }      from "./dashboard/widgets/UpcomingCallsPanel";
 import { ScheduledRemindersPanel } from "./dashboard/widgets/ScheduledRemindersPanel";
-import { Search, SlidersHorizontal, AlertTriangle, Clock } from "lucide-react";
+import { AlertTriangle, Clock } from "lucide-react";
+import { useUser } from "../hooks/useUser";
+import { api, type DashboardSummaryDto } from "../lib/api";
 
 export function DashboardPage() {
-  const [selectedCallId, setSelectedCallId] = useState<string>("1");
-  const [verified, setVerified] = useState(false);
+  const [selectedCallId, setSelectedCallId] = useState<string>("");
+  const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
+  const { user } = useUser();
+
+  const displayName = user?.name?.split(" ")[0] || "there";
+
+  const loadSummary = async () => {
+    try {
+      const data = await api.dashboardSummary();
+      setSummary(data);
+      return data;
+    } catch (error) {
+      console.error("Failed to load dashboard summary", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      const data = await loadSummary();
+      if (cancelled || !data) return;
+    }
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadSummary();
+    }, 30000);
+
+    const handleFocus = () => {
+      void loadSummary();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, []);
+
+  const activeSchedules = summary?.activeSchedules ?? [];
+  const recentCallLogs = summary?.recentCallLogs ?? [];
+  const upcomingCount = activeSchedules.length;
+  const missedCount = useMemo(
+    () => recentCallLogs.filter((log) => log.status === "no_answer" || log.status === "failed").length,
+    [recentCallLogs]
+  );
+
+  useEffect(() => {
+    if (!selectedCallId && activeSchedules.length > 0) {
+      setSelectedCallId(activeSchedules[0].id);
+    }
+    if (selectedCallId && activeSchedules.length > 0 && !activeSchedules.some((schedule) => schedule.id === selectedCallId)) {
+      setSelectedCallId(activeSchedules[0].id);
+    }
+  }, [activeSchedules, selectedCallId]);
 
   return (
     <div
@@ -17,19 +84,19 @@ export function DashboardPage() {
         display: "flex",
         height: "100vh",
         overflow: "hidden",
-        background: "#F8F4EE",
-        fontFamily: "'Inter', sans-serif",
+        background: "#F6F4EB",
+        fontFamily: "'Caveat', cursive",
       }}
     >
       {/* ── Sidebar (256px fixed) */}
       <SidebarNav />
 
       {/*
-       * CSS Grid — 5 rows, cannot overlap:
+       * CSS Grid — 5 rows:
        *   auto  → top bar
-       *   auto  → alerts + chips
-       *   180px → widget row
-       *   1fr   → panels  (fills ALL remaining space)
+       *   auto  → alerts
+       *   240px → widget row
+       *   1fr   → panels
        *   auto  → footer
        */}
       <div
@@ -39,7 +106,7 @@ export function DashboardPage() {
           height: "100vh",
           overflow: "hidden",
           display: "grid",
-          gridTemplateRows: "auto auto 240px 1fr auto",
+          gridTemplateRows: "auto 240px 1fr auto",
         }}
       >
 
@@ -50,91 +117,42 @@ export function DashboardPage() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: "16px",
-            padding: "16px 32px",
-            borderBottom: "1px solid rgba(26,26,26,0.07)",
-            background: "#F8F4EE",
+            padding: "20px 32px",
+            borderBottom: "2px solid rgba(26,26,26,0.07)",
+            background: "#F6F4EB",
           }}
         >
           <div style={{ minWidth: 0 }}>
             <h1
               style={{
-                fontFamily: "'Space Grotesk', sans-serif",
+                fontFamily: "'Caveat', cursive",
                 fontWeight: 700,
-                fontSize: "clamp(1.2rem, 1.6vw, 1.5rem)",
+                fontSize: "36px",
                 color: "#1A1A1A",
-                letterSpacing: "-0.02em",
                 lineHeight: 1.2,
                 margin: 0,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                paddingRight: "10px",
               }}
             >
-              Good morning, Dr. Olivia
+              Good morning, {displayName}
             </h1>
             <p
               style={{
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: "'Caveat', cursive",
                 fontWeight: 400,
-                fontSize: "13px",
+                fontSize: "20px",
                 color: "rgba(26,26,26,0.42)",
                 margin: "4px 0 0",
               }}
             >
-              Tuesday, 29 April 2026 &nbsp;·&nbsp; 20 calls scheduled today &nbsp;·&nbsp; 3 pending verification
+              {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-            <div style={{ position: "relative" }}>
-              <Search
-                size={16}
-                style={{
-                  position: "absolute", left: "14px", top: "50%",
-                  transform: "translateY(-50%)", color: "rgba(26,26,26,0.3)", pointerEvents: "none",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Search contacts, medicines…"
-                style={{
-                  width: "280px", background: "white", border: "1px solid #e5e7eb",
-                  borderRadius: "14px", padding: "10px 16px 10px 42px",
-                  fontFamily: "'Inter', sans-serif", fontSize: "14px", color: "#1A1A1A",
-                  outline: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                }}
-              />
-            </div>
-          </div>
         </div>
 
-        {/* ── ROW 2 · Alerts (Cleaned up - chips removed) */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: "20px",
-            padding: "10px 32px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "10px", padding: "8px 16px" }}>
-              <AlertTriangle size={14} style={{ color: "#EF4444", flexShrink: 0 }} />
-              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "13px", fontWeight: 500, color: "#991B1B", whiteSpace: "nowrap" }}>
-                Dadi Ji — all 5 retries failed, SMS sent
-              </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "10px", padding: "8px 16px" }}>
-              <Clock size={14} style={{ color: "#D97706", flexShrink: 0 }} />
-              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "13px", fontWeight: 500, color: "#92400E", whiteSpace: "nowrap" }}>
-                Papa — anxious mood detected 2 days
-              </span>
-            </div>
-          </div>
-        </div>
 
-        {/* ── ROW 3 · Analytics widgets (Adjusted to 3 columns) */}
+
+        {/* ── ROW 3 · Analytics widgets (3 columns) */}
         <div
           style={{
             display: "grid",
@@ -145,11 +163,11 @@ export function DashboardPage() {
           }}
         >
           <MoodWidget />
-          <CallsRemainingWidget />
-          <CallsMissedWidget />
+          <CallsRemainingWidget count={upcomingCount} />
+          <CallsMissedWidget count={missedCount} />
         </div>
 
-        {/* ── ROW 4 · Panels (1fr — fills all remaining space) */}
+        {/* ── ROW 4 · Panels */}
         <div
           style={{
             display: "grid",
@@ -160,8 +178,8 @@ export function DashboardPage() {
             minHeight: 0,
           }}
         >
-          <UpcomingCallsPanel selectedId={selectedCallId} onSelect={setSelectedCallId} />
-          <ScheduledRemindersPanel onVerify={() => setVerified(v => !v)} />
+          <UpcomingCallsPanel selectedId={selectedCallId} onSelect={setSelectedCallId} calls={activeSchedules} />
+          <ScheduledRemindersPanel onScheduled={() => { void loadSummary(); }} />
         </div>
 
         {/* ── ROW 5 · Footer */}
@@ -171,10 +189,10 @@ export function DashboardPage() {
             padding: "7px 24px", borderTop: "1px solid rgba(26,26,26,0.06)",
           }}
         >
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: "10px", color: "rgba(26,26,26,0.3)", margin: 0 }}>
-            🔒 SAYA.AI Guardian — powered by Exotel + Supabase. HIPAA &amp; DPDPA 2023 compliant.
+          <p style={{ fontFamily: "'Caveat', cursive", fontSize: "16px", color: "rgba(26,26,26,0.3)", margin: 0 }}>
+            🔒 SAYA.AI Guardian — powered by Twilio + Supabase
           </p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: "10px", color: "rgba(26,26,26,0.2)", margin: 0 }}>
+          <p style={{ fontFamily: "'Caveat', cursive", fontSize: "16px", color: "rgba(26,26,26,0.2)", margin: 0 }}>
             v2.4.1 — Session active
           </p>
         </div>
