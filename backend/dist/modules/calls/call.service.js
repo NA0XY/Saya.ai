@@ -26,6 +26,8 @@ exports.callService = {
         const schedule = await medication_repository_1.medicationRepository.findScheduleById(params.scheduleId);
         if (!schedule)
             throw apiError_1.ApiError.notFound('Medication schedule');
+        // Avoid extra attempts by cancelling any pending retry jobs before starting a call.
+        await retry_service_1.retryService.cancelRetries(schedule.id);
         const call = await twilio_client_1.twilioClient.makeCall({
             to: params.to,
             drugName: params.drugName,
@@ -86,17 +88,37 @@ exports.callService = {
             await retry_service_1.retryService.cancelRetries(schedule.id);
             await sms_service_1.smsService.sendMedicationConfirmedSms(patient.full_name, schedule.medicine_name, contacts, schedule.language);
         }
+        else if (digit === '2') {
+            const updated = await medication_repository_1.medicationRepository.updateCallLog(log.id, { status: 'rejected', ivr_response: '2', answered_at: (0, dateTime_1.isoNow)() });
+            if (contacts.length > 0) {
+                logger_1.logger.info('[CALL] Sending intentional-refusal SMS to guardians', { scheduleId: log.schedule_id, contactCount: contacts.length });
+                await sms_service_1.smsService.sendIntentionalRefusalSms(patient.full_name, schedule.medicine_name, contacts, 'Saya.ai');
+            }
+            // Do not retry when user explicitly rejected via IVR
+        }
         else if (digit === null) {
             const updated = await medication_repository_1.medicationRepository.updateCallLog(log.id, { status: 'no_answer', ivr_response: null, answered_at: null });
-            if (contacts.length > 0 && updated.attempt_number === 1) {
-                logger_1.logger.info('[CALL] Sending no-input SMS to guardians', { scheduleId: log.schedule_id, contactCount: contacts.length });
-                await sms_service_1.smsService.sendMedicationMissedSms(patient.full_name, schedule.medicine_name, contacts, 'Saya.ai');
+            // Immediate retry if attempts remain
+            if (updated.attempt_number < env_1.env.MAX_CALL_RETRIES) {
+                await retry_service_1.retryService.cancelRetries(updated.schedule_id);
+                logger_1.logger.info('[CALL] No input — initiating immediate retry', { scheduleId: updated.schedule_id, nextAttempt: updated.attempt_number + 1 });
+                await exports.callService.initiateCall(updated.schedule_id, updated.attempt_number + 1);
             }
-            await retry_service_1.retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+            else {
+                // Final attempt exhausted — send final missed SMS/alert
+                await retry_service_1.retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+            }
+            return;
         }
         else {
             const updated = await medication_repository_1.medicationRepository.updateCallLog(log.id, { status: 'rejected', ivr_response: digit, answered_at: (0, dateTime_1.isoNow)() });
-            await retry_service_1.retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+            if (updated.attempt_number < env_1.env.MAX_CALL_RETRIES) {
+                logger_1.logger.info('[CALL] IVR response not recognized — scheduling immediate retry', { scheduleId: updated.schedule_id, nextAttempt: updated.attempt_number + 1 });
+                await exports.callService.initiateCall(updated.schedule_id, updated.attempt_number + 1);
+            }
+            else {
+                await retry_service_1.retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+            }
         }
     },
     async handleCallStatusUpdate(payload) {
@@ -125,12 +147,17 @@ exports.callService = {
             const patient = await patient_repository_1.patientRepository.findById(log.patient_id);
             if (schedule && patient) {
                 const contacts = await patient_repository_1.patientRepository.findEscalationContacts(patient.id);
-                if (contacts.length > 0 && updated.attempt_number === 1) {
-                    logger_1.logger.info('[CALL] Sending missed call SMS to guardians', { scheduleId: log.schedule_id, contactCount: contacts.length });
-                    await sms_service_1.smsService.sendMedicationMissedSms(patient.full_name, schedule.medicine_name, contacts, 'Saya.ai');
+                if (updated.attempt_number < env_1.env.MAX_CALL_RETRIES) {
+                    await retry_service_1.retryService.cancelRetries(updated.schedule_id);
+                    logger_1.logger.info('[CALL] Call not received — initiating immediate retry', { scheduleId: updated.schedule_id, nextAttempt: updated.attempt_number + 1 });
+                    await exports.callService.initiateCall(updated.schedule_id, updated.attempt_number + 1);
+                }
+                else {
+                    // Exhausted attempts; final SMS/alert
+                    await retry_service_1.retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
                 }
             }
-            await retry_service_1.retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+            return;
         }
     },
     /**

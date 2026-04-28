@@ -40,7 +40,7 @@ exports.EnvSchema = zod_1.z.object({
     BACKEND_URL: zod_1.z.string().url().default('http://localhost:3001'),
     MAX_FILE_SIZE_MB: zod_1.z.coerce.number().positive().default(10),
     UPLOAD_DIR: zod_1.z.string().default('./uploads'),
-    MAX_CALL_RETRIES: zod_1.z.coerce.number().int().positive().default(5),
+    MAX_CALL_RETRIES: zod_1.z.coerce.number().int().positive().default(3),
     RETRY_INTERVAL_MINUTES: zod_1.z.coerce.number().int().positive().default(3)
 });
 const parsed = exports.EnvSchema.safeParse(process.env);

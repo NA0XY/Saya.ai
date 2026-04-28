@@ -43,7 +43,7 @@ export const twilioClient: TelephonyProvider = {
         to: params.to,
         from: env.TWILIO_PHONE_NUMBER,
         statusCallback,
-        statusCallbackEvent: ['completed', 'no-answer', 'busy', 'failed'],
+        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
         statusCallbackMethod: 'POST',
       });
 
@@ -51,6 +51,8 @@ export const twilioClient: TelephonyProvider = {
         callSid: call.sid,
         to: params.to,
         scheduleId: params.scheduleId,
+        url,
+        statusCallback,
       });
 
       return { callSid: call.sid };
@@ -80,6 +82,11 @@ export const twilioClient: TelephonyProvider = {
 
     const response = new VoiceResponse();
 
+    const debugPlain = process.env.TWILIO_DEBUG_PLAIN_VOICE === '1';
+    const sayOptions = debugPlain
+      ? { voice: 'alice', language: 'en-US' }
+      : { voice: 'Polly.Aditi', language: voiceLanguage };
+
     if (params.gather) {
       const gather = response.gather({
         numDigits: 1,
@@ -89,13 +96,13 @@ export const twilioClient: TelephonyProvider = {
         actionOnEmptyResult: true,
       });
 
-      // @ts-expect-error -- hi-IN/en-IN are valid Twilio Polly voices at runtime
-      gather.say({ voice: 'Polly.Aditi', language: voiceLanguage }, params.message);
+      // @ts-expect-error -- hi-IN/en-US are valid Twilio say language values at runtime
+      gather.say(sayOptions, params.message);
 
       response.redirect({ method: 'POST' }, params.actionUrl);
     } else {
-      // @ts-expect-error -- hi-IN/en-IN are valid Twilio Polly voices at runtime
-      response.say({ voice: 'Polly.Aditi', language: voiceLanguage }, params.message);
+      // @ts-expect-error -- hi-IN/en-US are valid Twilio say language values at runtime
+      response.say(sayOptions, params.message);
     }
 
     const twimlString = response.toString();
