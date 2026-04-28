@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.prescriptionRouter = void 0;
+const express_1 = require("express");
+const zod_1 = require("zod");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const rateLimit_middleware_1 = require("../middleware/rateLimit.middleware");
+const upload_middleware_1 = require("../middleware/upload.middleware");
+const validate_middleware_1 = require("../middleware/validate.middleware");
+const prescription_controller_1 = require("../modules/prescriptions/prescription.controller");
+const prescription_validator_1 = require("../modules/prescriptions/prescription.validator");
+const safety_controller_1 = require("../modules/safety/safety.controller");
+const PrescriptionParamsSchema = zod_1.z.object({ id: zod_1.z.string().min(1) });
+const PrescriptionQuerySchema = zod_1.z.object({ patientId: zod_1.z.union([zod_1.z.string().uuid(), zod_1.z.literal('demo-patient-uuid')]), demo: zod_1.z.string().optional() });
+exports.prescriptionRouter = (0, express_1.Router)();
+exports.prescriptionRouter.post('/', auth_middleware_1.optionalDemoAuth, rateLimit_middleware_1.uploadLimiter, upload_middleware_1.handlePrescriptionUpload, prescription_controller_1.prescriptionController.upload);
+exports.prescriptionRouter.get('/', auth_middleware_1.optionalDemoAuth, (0, validate_middleware_1.validateQuery)(PrescriptionQuerySchema), prescription_controller_1.prescriptionController.list);
+exports.prescriptionRouter.get('/:id', auth_middleware_1.optionalDemoAuth, (0, validate_middleware_1.validateParams)(PrescriptionParamsSchema), prescription_controller_1.prescriptionController.getOne);
+exports.prescriptionRouter.post('/:id/verify', auth_middleware_1.optionalDemoAuth, (0, validate_middleware_1.validateParams)(PrescriptionParamsSchema), (0, validate_middleware_1.validateBody)(prescription_validator_1.VerifyPrescriptionSchema), prescription_controller_1.prescriptionController.verify);
+exports.prescriptionRouter.get('/:id/warnings', auth_middleware_1.optionalDemoAuth, (0, validate_middleware_1.validateParams)(PrescriptionParamsSchema), safety_controller_1.safetyController.getWarnings);
+//# sourceMappingURL=prescription.routes.js.map

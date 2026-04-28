@@ -1,0 +1,3673 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.env.example
+nodemon.json
+package.json
+README.md
+src/app.ts
+src/config/cors.ts
+src/config/env.ts
+src/config/logger.ts
+src/config/supabase.ts
+src/config/upload.ts
+src/data/demoPrescriptions.ts
+src/data/demoVitals.ts
+src/data/drugSuggestions.ts
+src/data/indianDrugSeed.ts
+src/jobs/dailyNewsRefresh.job.ts
+src/jobs/emotionalEscalation.job.ts
+src/jobs/medicationReminder.job.ts
+src/jobs/retryMissedCalls.job.ts
+src/jobs/scheduler.ts
+src/middleware/auth.middleware.ts
+src/middleware/error.middleware.ts
+src/middleware/rateLimit.middleware.ts
+src/middleware/upload.middleware.ts
+src/middleware/validate.middleware.ts
+src/modules/alerts/alert.repository.ts
+src/modules/alerts/alert.service.ts
+src/modules/alerts/alert.types.ts
+src/modules/auth/auth.controller.ts
+src/modules/auth/auth.service.ts
+src/modules/auth/auth.types.ts
+src/modules/auth/auth.validator.ts
+src/modules/calls/call.controller.ts
+src/modules/calls/call.service.ts
+src/modules/calls/call.types.ts
+src/modules/calls/exotel.client.ts
+src/modules/calls/retry.service.ts
+src/modules/calls/sms.service.ts
+src/modules/calls/tts.service.ts
+src/modules/companion/companion.controller.ts
+src/modules/companion/companion.prompts.ts
+src/modules/companion/companion.service.ts
+src/modules/companion/companion.types.ts
+src/modules/companion/memory.service.ts
+src/modules/companion/sentiment.service.ts
+src/modules/dashboard/dashboard.controller.ts
+src/modules/dashboard/dashboard.service.ts
+src/modules/dashboard/demoVitals.service.ts
+src/modules/medications/medication.controller.ts
+src/modules/medications/medication.repository.ts
+src/modules/medications/medication.service.ts
+src/modules/medications/medication.types.ts
+src/modules/medications/schedule.service.ts
+src/modules/ner/groqNer.service.ts
+src/modules/ner/ner.prompts.ts
+src/modules/ner/ner.types.ts
+src/modules/news/news.service.ts
+src/modules/news/news.types.ts
+src/modules/news/newsapi.client.ts
+src/modules/ocr/googleVision.client.ts
+src/modules/ocr/ocr.service.ts
+src/modules/ocr/ocr.types.ts
+src/modules/onboarding/onboarding.controller.ts
+src/modules/onboarding/onboarding.service.ts
+src/modules/onboarding/onboarding.types.ts
+src/modules/onboarding/onboarding.validator.ts
+src/modules/patients/patient.repository.ts
+src/modules/patients/patient.service.ts
+src/modules/patients/patient.types.ts
+src/modules/prescriptions/prescription.controller.ts
+src/modules/prescriptions/prescription.repository.ts
+src/modules/prescriptions/prescription.service.ts
+src/modules/prescriptions/prescription.types.ts
+src/modules/prescriptions/prescription.validator.ts
+src/modules/safety/interaction.repository.ts
+src/modules/safety/openfda.client.ts
+src/modules/safety/ragSafety.prompts.ts
+src/modules/safety/rxnorm.client.ts
+src/modules/safety/safety.controller.ts
+src/modules/safety/safety.service.ts
+src/modules/safety/safety.types.ts
+src/routes/auth.routes.ts
+src/routes/call.routes.ts
+src/routes/companion.routes.ts
+src/routes/dashboard.routes.ts
+src/routes/index.ts
+src/routes/medication.routes.ts
+src/routes/onboarding.routes.ts
+src/routes/prescription.routes.ts
+src/routes/webhook.routes.ts
+src/server.ts
+src/types/common.ts
+src/types/database.ts
+src/types/env.ts
+src/types/express.d.ts
+src/types/node-cron.d.ts
+src/utils/apiError.ts
+src/utils/apiResponse.ts
+src/utils/asyncHandler.ts
+src/utils/confidence.ts
+src/utils/dateTime.ts
+src/utils/language.ts
+src/utils/phone.ts
+src/webhooks/exotelIvr.webhook.ts
+src/webhooks/exotelStatus.webhook.ts
+src/webhooks/webhook.types.ts
+supabase/migrations/001_users_patients_contacts.sql
+supabase/migrations/002_prescriptions_medicines.sql
+supabase/migrations/003_drug_interactions.sql
+supabase/migrations/004_medication_schedules_calls.sql
+supabase/migrations/005_companion_memory_messages.sql
+supabase/migrations/006_alerts_news_vitals.sql
+supabase/schema.sql
+supabase/seed.demo.sql
+tests/safetyFallbackClients.test.ts
+tsconfig.json
+uploads/prescriptions/.gitkeep
+uploads/temp/.gitkeep
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".env.example">
+PORT=3001
+NODE_ENV=development
+
+# Supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Groq
+GROQ_API_KEY=your-groq-api-key
+
+# Google Cloud Vision
+GOOGLE_APPLICATION_CREDENTIALS=./gcp-credentials.json
+
+# AWS (Amazon Polly via Exotel)
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=ap-south-1
+
+# Exotel
+EXOTEL_SID=your-exotel-sid
+EXOTEL_API_KEY=your-exotel-api-key
+EXOTEL_API_TOKEN=your-exotel-token
+EXOTEL_SUBDOMAIN=api.exotel.com
+EXOTEL_CALLER_ID=+91XXXXXXXXXX
+
+# NewsAPI
+NEWS_API_KEY=your-newsapi-key
+
+# Medical fallback APIs
+OPENFDA_API_KEY=
+OPENFDA_LABEL_URL=https://api.fda.gov/drug/label.json
+RXNORM_BASE_URL=https://rxnav.nlm.nih.gov/REST
+MEDICAL_FALLBACK_TIMEOUT_MS=10000
+
+# JWT
+JWT_SECRET=your-jwt-secret-minimum-32-chars
+JWT_EXPIRES_IN=7d
+
+# Frontend
+FRONTEND_URL=http://localhost:5173
+BACKEND_URL=http://localhost:3001
+
+# File Upload
+MAX_FILE_SIZE_MB=10
+UPLOAD_DIR=./uploads
+
+# Call retry config
+MAX_CALL_RETRIES=5
+RETRY_INTERVAL_MINUTES=3
+</file>
+
+<file path="nodemon.json">
+{
+  "watch": ["src/**/*.ts"],
+  "ext": "ts,json",
+  "ignore": ["dist/", "node_modules/"],
+  "exec": "ts-node src/server.ts"
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "saya-ai-backend",
+  "version": "1.0.0",
+  "description": "Saya.ai autonomous elder care companion backend",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "node --test -r ts-node/register \"tests/**/*.test.ts\"",
+    "seed": "ts-node src/data/indianDrugSeed.ts"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^4.3.3",
+    "@supabase/supabase-js": "^2.49.1",
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.8.4",
+    "bcryptjs": "^3.0.2",
+    "bull": "^4.16.5",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "groq-sdk": "^0.9.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0",
+    "ws": "^8.18.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/morgan": "^1.9.9",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.13",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.14",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}
+</file>
+
+<file path="README.md">
+# Saya.ai Backend
+
+Node.js, TypeScript, Express, and Supabase backend for Saya.ai, an India-first elder care companion.
+
+## Core Capabilities
+
+- Prescription OCR with Google Cloud Vision and Groq-based medicine extraction.
+- Caregiver verification before any extracted medicine activates.
+- Curated Indian drug interaction lookup with openFDA/RxNorm fallback support.
+- Exotel medication reminder calls with Amazon Polly TTS, IVR confirmation, retries, and SMS alerts.
+- Supabase-backed companion chat with patient memory, NewsAPI context, sentiment tagging, and approved-contact escalation.
+- Demo dashboard data for hackathon presentation flows.
+
+## Commands
+
+```bash
+npm install
+npm run dev
+npm run build
+npm test
+npm run seed
+```
+
+## Safety Invariants
+
+- Medical warnings are blocked until the prescription is caregiver-verified.
+- Warning facts come from curated Supabase records or external medical-label/normalization APIs, never from LLM free text.
+- Companion outreach is limited to caregiver-approved contacts.
+- Emotional escalation requires two consecutive negative sentiment messages.
+</file>
+
+<file path="src/app.ts">
+import './config/env';
+import path from 'path';
+import cors from 'cors';
+import express from 'express';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { corsOptions } from './config/cors';
+import { logger } from './config/logger';
+import { errorMiddleware } from './middleware/error.middleware';
+import { generalLimiter } from './middleware/rateLimit.middleware';
+import { router } from './routes';
+import { webhookRouter } from './routes/webhook.routes';
+
+export const app = express();
+app.use(helmet());
+app.use(cors(corsOptions));
+app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use(generalLimiter);
+app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.use('/api', router);
+app.use('/webhooks', webhookRouter);
+app.use(errorMiddleware);
+</file>
+
+<file path="src/config/cors.ts">
+import type { CorsOptions } from 'cors';
+import { env } from './env';
+
+export const corsOptions: CorsOptions = {
+  origin: env.NODE_ENV === 'production' ? env.FRONTEND_URL : '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+</file>
+
+<file path="src/config/env.ts">
+import dotenv from 'dotenv';
+import { z } from 'zod';
+
+dotenv.config();
+
+export const EnvSchema = z.object({
+  PORT: z.coerce.number().int().positive().default(3001),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  GROQ_API_KEY: z.string().min(1),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1),
+  AWS_ACCESS_KEY_ID: z.string().min(1),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1),
+  AWS_REGION: z.string().min(1).default('ap-south-1'),
+  EXOTEL_SID: z.string().min(1),
+  EXOTEL_API_KEY: z.string().min(1),
+  EXOTEL_API_TOKEN: z.string().min(1),
+  EXOTEL_SUBDOMAIN: z.string().min(1).default('api.exotel.com'),
+  EXOTEL_CALLER_ID: z.string().min(1),
+  NEWS_API_KEY: z.string().min(1),
+  OPENFDA_API_KEY: z.string().optional().default(''),
+  OPENFDA_LABEL_URL: z.string().url().default('https://api.fda.gov/drug/label.json'),
+  RXNORM_BASE_URL: z.string().url().default('https://rxnav.nlm.nih.gov/REST'),
+  MEDICAL_FALLBACK_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_EXPIRES_IN: z.string().default('7d'),
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+  BACKEND_URL: z.string().url().default('http://localhost:3001'),
+  MAX_FILE_SIZE_MB: z.coerce.number().positive().default(10),
+  UPLOAD_DIR: z.string().default('./uploads'),
+  MAX_CALL_RETRIES: z.coerce.number().int().positive().default(5),
+  RETRY_INTERVAL_MINUTES: z.coerce.number().int().positive().default(3)
+});
+
+export type Env = z.infer<typeof EnvSchema>;
+
+const parsed = EnvSchema.safeParse(process.env);
+if (!parsed.success) {
+  const details = parsed.error.errors.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ');
+  throw new Error(`Invalid environment configuration: ${details}`);
+}
+
+export const env: Env = parsed.data;
+</file>
+
+<file path="src/config/logger.ts">
+import fs from 'fs';
+import path from 'path';
+import winston from 'winston';
+import { env } from './env';
+
+const logFormat = winston.format.printf(({ timestamp, level, message, ...meta }) => {
+  const context = Object.keys(meta).length ? ` -- ${JSON.stringify(meta)}` : '';
+  return `[${timestamp}] [${level}] ${message}${context}`;
+});
+
+const transports: winston.transport[] = [];
+
+if (env.NODE_ENV === 'production') {
+  const logDir = path.resolve(process.cwd(), 'logs');
+  fs.mkdirSync(logDir, { recursive: true });
+  transports.push(new winston.transports.File({ filename: path.join(logDir, 'error.log'), level: 'error' }));
+  transports.push(new winston.transports.File({ filename: path.join(logDir, 'combined.log') }));
+} else {
+  transports.push(new winston.transports.Console({
+    format: winston.format.combine(winston.format.colorize(), winston.format.timestamp(), logFormat)
+  }));
+}
+
+export const logger = winston.createLogger({
+  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true }), logFormat),
+  transports
+});
+</file>
+
+<file path="src/config/supabase.ts">
+import { createClient } from '@supabase/supabase-js';
+import { env } from './env';
+import type { Database } from '../types/database';
+
+export const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
+
+export const db = <T extends keyof Database['public']['Tables']>(table: T) => supabase.from(String(table));
+</file>
+
+<file path="src/config/upload.ts">
+import fs from 'fs';
+import path from 'path';
+import multer from 'multer';
+import { v4 as uuid } from 'uuid';
+import { env } from './env';
+
+const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf']);
+const prescriptionDir = path.resolve(process.cwd(), env.UPLOAD_DIR, 'prescriptions');
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    fs.mkdirSync(prescriptionDir, { recursive: true });
+    cb(null, prescriptionDir);
+  },
+  filename: (_req, file, cb) => {
+    const safeName = file.originalname.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase();
+    cb(null, `${Date.now()}-${uuid()}-${safeName}`);
+  }
+});
+
+export const prescriptionUpload = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      cb(new Error('Only JPEG, PNG, WEBP, HEIC images and PDF files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 }
+});
+</file>
+
+<file path="src/data/demoPrescriptions.ts">
+export interface DemoPrescription {
+  id: string;
+  patient_id: string;
+  drug_name: string;
+  dosage: string;
+  frequency: string;
+  verified: true;
+  image_url: string;
+  created_at: string;
+}
+
+const DEMO_PATIENT_ID = 'demo-patient-uuid';
+const now = new Date().toISOString();
+
+export const DEMO_PRESCRIPTIONS: DemoPrescription[] = [
+  { id: 'demo-rx-dolo', patient_id: DEMO_PATIENT_ID, drug_name: 'Dolo-650', dosage: '250mg', frequency: 'twice daily', verified: true, image_url: '/uploads/demo/dolo.png', created_at: now },
+  { id: 'demo-rx-metoprolol', patient_id: DEMO_PATIENT_ID, drug_name: 'Metoprolol', dosage: '25mg', frequency: 'once daily', verified: true, image_url: '/uploads/demo/metoprolol.png', created_at: now },
+  { id: 'demo-rx-atorvastatin', patient_id: DEMO_PATIENT_ID, drug_name: 'Atorvastatin', dosage: '10mg', frequency: 'once at night', verified: true, image_url: '/uploads/demo/atorvastatin.png', created_at: now },
+  { id: 'demo-rx-telma-am', patient_id: DEMO_PATIENT_ID, drug_name: 'Telma-AM', dosage: '40mg', frequency: 'once morning', verified: true, image_url: '/uploads/demo/telma-am.png', created_at: now },
+  { id: 'demo-rx-metformin', patient_id: DEMO_PATIENT_ID, drug_name: 'Metformin', dosage: '500mg', frequency: 'twice daily', verified: true, image_url: '/uploads/demo/metformin.png', created_at: now },
+  { id: 'demo-rx-pantoprazole', patient_id: DEMO_PATIENT_ID, drug_name: 'Pantoprazole', dosage: '40mg', frequency: 'before breakfast', verified: true, image_url: '/uploads/demo/pantoprazole.png', created_at: now },
+  { id: 'demo-rx-levothyroxine', patient_id: DEMO_PATIENT_ID, drug_name: 'Levothyroxine', dosage: '50mcg', frequency: 'empty stomach', verified: true, image_url: '/uploads/demo/levothyroxine.png', created_at: now },
+  { id: 'demo-rx-amlodipine', patient_id: DEMO_PATIENT_ID, drug_name: 'Amlodipine', dosage: '5mg', frequency: 'once daily', verified: true, image_url: '/uploads/demo/amlodipine.png', created_at: now }
+];
+</file>
+
+<file path="src/data/demoVitals.ts">
+import { subDays } from 'date-fns';
+import type { DemoVital } from '../types/database';
+
+const patientId = 'demo-patient-uuid';
+const metrics: Array<{ metric: DemoVital['metric']; min: number; max: number; unit: string }> = [
+  { metric: 'blood_pressure_systolic', min: 115, max: 145, unit: 'mmHg' },
+  { metric: 'blood_pressure_diastolic', min: 75, max: 90, unit: 'mmHg' },
+  { metric: 'heart_rate', min: 62, max: 85, unit: 'bpm' },
+  { metric: 'blood_sugar', min: 95, max: 180, unit: 'mg/dL' },
+  { metric: 'spo2', min: 95, max: 99, unit: '%' }
+];
+
+function deterministicValue(day: number, index: number, min: number, max: number): number {
+  const span = max - min;
+  const wave = Math.sin((day + 1) * (index + 2)) * 0.5 + 0.5;
+  return Math.round(min + wave * span);
+}
+
+export const DEMO_VITALS: DemoVital[] = Array.from({ length: 30 }).flatMap((_, day) =>
+  metrics.map((item, index) => ({
+    id: `demo-vital-${day}-${item.metric}`,
+    patient_id: patientId,
+    metric: item.metric,
+    value: deterministicValue(day, index, item.min, item.max),
+    unit: item.unit,
+    recorded_at: subDays(new Date(), 29 - day).toISOString()
+  }))
+);
+</file>
+
+<file path="src/data/drugSuggestions.ts">
+export const INDIAN_DRUG_SUGGESTIONS: string[] = [
+  'Dolo-650', 'Crocin', 'Paracetamol', 'Calpol', 'Metformin', 'Glycomet', 'Glucophage', 'Obimet',
+  'Atorvastatin', 'Atorva', 'Lipitor', 'Storvas', 'Metoprolol', 'Betaloc', 'Metolar', 'Metpure',
+  'Amlodipine', 'Amlong', 'Stamlo', 'Norvasc', 'Telmisartan', 'Telma', 'Telma-AM', 'Ciprofloxacin',
+  'Ciplox', 'Cifran', 'Ziproc', 'Azithromycin', 'Azee', 'Pantoprazole', 'Pan-D', 'Pantocid', 'Pantop',
+  'Omeprazole', 'Omez', 'Levothyroxine', 'Eltroxin', 'Thyronorm', 'Lisinopril', 'Listril', 'Lisoril',
+  'Zestril', 'Warfarin', 'Warf', 'Sofarin', 'Coumadin', 'Clopidogrel', 'Ecosprin', 'Aspirin', 'Disprin',
+  'Losartan', 'Losartan Potassium', 'Ramipril', 'Cardace', 'Glimepiride', 'Amaryl', 'Januvia', 'Sitagliptin',
+  'Insulin Glargine', 'Tresiba', 'Metoprolol succinate', 'Bisoprolol', 'Concor', 'Cetirizine', 'Zyrtec',
+  'Montelukast', 'Montair', 'Salbutamol', 'Asthalin', 'Budesonide', 'Foracort', 'Rosuvastatin', 'Rozavel',
+  'Crestor', 'Pregabalin', 'Lyrica', 'Gabapentin', 'Amitriptyline', 'Sertraline', 'Zoloft', 'Escitalopram',
+  'Nexito', 'Alprazolam', 'Clonazepam', 'Diazepam', 'Rabeprazole', 'Razo', 'Levofloxacin', 'Levomac',
+  'Doxycycline', 'Vibramycin', 'Acyclovir', 'Zovirax', 'Fluconazole', 'Forcan'
+];
+</file>
+
+<file path="src/data/indianDrugSeed.ts">
+import { env } from '../config/env';
+import { logger } from '../config/logger';
+import { supabase } from '../config/supabase';
+import type { DrugInteraction } from '../types/database';
+
+type SeedInteraction = Omit<DrugInteraction, 'id' | 'created_at'>;
+
+export const INDIAN_DRUG_INTERACTIONS: SeedInteraction[] = [
+  { drug_name: 'Atorvastatin', drug_aliases: ['Atorva', 'Lipitor', 'Storvas'], interaction_type: 'food', interacting_substance: 'Grapefruit', severity: 'high', description_en: 'Grapefruit significantly increases atorvastatin blood levels causing muscle damage risk', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Atorvastatin', drug_aliases: ['Atorva', 'Lipitor', 'Storvas'], interaction_type: 'food', interacting_substance: 'Excess mango', severity: 'moderate', description_en: 'Mango juice may moderately increase statin absorption', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Atorvastatin', drug_aliases: ['Atorva', 'Lipitor', 'Storvas'], interaction_type: 'food', interacting_substance: 'Alcohol', severity: 'high', description_en: 'Alcohol combined with statins increases liver damage risk', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Metoprolol', drug_aliases: ['Betaloc', 'Metolar', 'Metpure'], interaction_type: 'food', interacting_substance: 'Excessive chai', severity: 'moderate', description_en: 'Caffeine in chai can counteract beta-blocker effects and raise heart rate', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Metoprolol', drug_aliases: ['Betaloc', 'Metolar', 'Metpure'], interaction_type: 'food', interacting_substance: 'Coffee', severity: 'moderate', description_en: 'Caffeine antagonises the heart rate lowering effect of Metoprolol', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Dolo-650', drug_aliases: ['Paracetamol', 'Crocin', 'Calpol'], interaction_type: 'food', interacting_substance: 'Alcohol', severity: 'high', description_en: 'Alcohol with paracetamol causes severe hepatotoxicity even at normal doses', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Dolo-650', drug_aliases: ['Paracetamol', 'Crocin', 'Calpol'], interaction_type: 'food', interacting_substance: 'Curd (if liver sensitivity)', severity: 'low', description_en: 'Fermented foods may mildly affect paracetamol metabolism in sensitive individuals', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Telma-AM', drug_aliases: ['Telmisartan+Amlodipine'], interaction_type: 'food', interacting_substance: 'Excess salt', severity: 'high', description_en: 'High dietary sodium directly counteracts the antihypertensive effect of Telmisartan', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Telma-AM', drug_aliases: ['Telmisartan+Amlodipine'], interaction_type: 'food', interacting_substance: 'Banana', severity: 'moderate', description_en: 'Bananas are high in potassium; Telmisartan also raises potassium causing hyperkalaemia risk', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Metformin', drug_aliases: ['Glycomet', 'Glucophage', 'Obimet'], interaction_type: 'food', interacting_substance: 'Alcohol', severity: 'high', description_en: 'Alcohol increases risk of lactic acidosis in patients on Metformin', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Metformin', drug_aliases: ['Glycomet', 'Glucophage', 'Obimet'], interaction_type: 'food', interacting_substance: 'White rice in excess', severity: 'moderate', description_en: 'High glycaemic index foods reduce Metformin efficacy and spike blood sugar', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Amlodipine', drug_aliases: ['Amlong', 'Stamlo', 'Norvasc'], interaction_type: 'food', interacting_substance: 'Grapefruit', severity: 'moderate', description_en: 'Grapefruit juice increases amlodipine plasma levels increasing hypotension risk', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Warfarin', drug_aliases: ['Warf', 'Sofarin', 'Coumadin'], interaction_type: 'food', interacting_substance: 'Leafy greens (palak, methi)', severity: 'high', description_en: 'Vitamin K in leafy greens significantly reduces anticoagulant effect of Warfarin', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Warfarin', drug_aliases: ['Warf', 'Sofarin', 'Coumadin'], interaction_type: 'food', interacting_substance: 'Alcohol', severity: 'high', description_en: 'Alcohol unpredictably alters Warfarin metabolism increasing bleeding risk', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Ciprofloxacin', drug_aliases: ['Ciplox', 'Cifran', 'Ziproc'], interaction_type: 'food', interacting_substance: 'Milk and dairy', severity: 'moderate', description_en: 'Calcium in dairy chelates ciprofloxacin reducing absorption by up to 50%', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Ciprofloxacin', drug_aliases: ['Ciplox', 'Cifran', 'Ziproc'], interaction_type: 'food', interacting_substance: 'Iron supplements', severity: 'high', description_en: 'Iron binds ciprofloxacin in gut drastically reducing bioavailability', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Levothyroxine', drug_aliases: ['Eltroxin', 'Thyronorm'], interaction_type: 'food', interacting_substance: 'Soya products', severity: 'high', description_en: 'Soya isoflavones interfere with levothyroxine absorption; take 4 hours apart', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Levothyroxine', drug_aliases: ['Eltroxin', 'Thyronorm'], interaction_type: 'food', interacting_substance: 'Calcium-rich foods', severity: 'moderate', description_en: 'Calcium reduces levothyroxine absorption; take on empty stomach', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Lisinopril', drug_aliases: ['Listril', 'Lisoril', 'Zestril'], interaction_type: 'food', interacting_substance: 'Banana', severity: 'moderate', description_en: 'ACE inhibitors raise potassium; bananas add potassium load causing hyperkalaemia', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Lisinopril', drug_aliases: ['Listril', 'Lisoril', 'Zestril'], interaction_type: 'food', interacting_substance: 'Salt substitutes', severity: 'high', description_en: 'Many salt substitutes contain potassium chloride, dangerous with ACE inhibitors', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Aspirin', drug_aliases: ['Ecosprin', 'Disprin', 'Aspirin'], interaction_type: 'food', interacting_substance: 'Alcohol', severity: 'moderate', description_en: 'Alcohol increases GI bleeding risk when combined with aspirin', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Pantoprazole', drug_aliases: ['Pan-D', 'Pantocid', 'Pantop'], interaction_type: 'drug', interacting_substance: 'Clopidogrel', severity: 'high', description_en: 'Pantoprazole reduces antiplatelet efficacy of Clopidogrel increasing clot risk', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Metoprolol', drug_aliases: ['Betaloc', 'Metolar'], interaction_type: 'drug', interacting_substance: 'Verapamil', severity: 'high', description_en: 'Combined use causes severe bradycardia and heart block; never combine', description_hi: null, source: 'indian_db' },
+  { drug_name: 'Dolo-650', drug_aliases: ['Paracetamol'], interaction_type: 'drug', interacting_substance: 'Other paracetamol-containing products', severity: 'high', description_en: 'Double dosing paracetamol from multiple products causes liver failure', description_hi: null, source: 'indian_db' }
+];
+
+async function seed(): Promise<void> {
+  logger.info('[SEED] Starting Indian drug interaction seed', { count: INDIAN_DRUG_INTERACTIONS.length, project: env.SUPABASE_URL });
+  for (const entry of INDIAN_DRUG_INTERACTIONS) {
+    const { error } = await supabase.from('drug_interactions').upsert(entry, { onConflict: 'drug_name,interaction_type,interacting_substance' });
+    if (error) {
+      logger.error('[SEED] Drug interaction upsert failed', { drug: entry.drug_name, substance: entry.interacting_substance, error: error.message });
+      throw error;
+    }
+    logger.info('[SEED] Drug interaction upserted', { drug: entry.drug_name, substance: entry.interacting_substance });
+  }
+}
+
+if (require.main === module) {
+  seed()
+    .then(() => process.exit(0))
+    .catch((error: Error) => {
+      logger.error('[SEED] Failed', { message: error.message, stack: error.stack });
+      process.exit(1);
+    });
+}
+</file>
+
+<file path="src/jobs/dailyNewsRefresh.job.ts">
+import cron, { ScheduledTask } from 'node-cron';
+import { logger } from '../config/logger';
+import { newsService } from '../modules/news/news.service';
+
+export function dailyNewsRefreshJob(): ScheduledTask {
+  return cron.schedule('30 0 * * *', async () => {
+    try {
+      await newsService.refreshNews();
+      logger.info('[JOB] Daily news refreshed');
+    } catch (error) {
+      logger.error('[JOB] Daily news refresh failed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+}
+</file>
+
+<file path="src/jobs/emotionalEscalation.job.ts">
+import cron, { ScheduledTask } from 'node-cron';
+import { supabase } from '../config/supabase';
+import { logger } from '../config/logger';
+import { alertService } from '../modules/alerts/alert.service';
+import { patientRepository } from '../modules/patients/patient.repository';
+import { smsService } from '../modules/calls/sms.service';
+
+export function emotionalEscalationJob(): ScheduledTask {
+  return cron.schedule('0 * * * *', async () => {
+    try {
+      const { data: patients, error } = await supabase.from('patients').select('*');
+      if (error) throw error;
+      for (const patient of patients ?? []) {
+        const { data: messages } = await supabase.from('companion_messages').select('*').eq('patient_id', patient.id).eq('role', 'user').order('created_at', { ascending: false }).limit(2);
+        const persistent = (messages ?? []).length === 2 && (messages ?? []).every((message) => message.sentiment === 'sadness' || message.sentiment === 'anxiety');
+        if (persistent && !(await alertService.hasRecentEmotionalEscalation(patient.id))) {
+          const contacts = await patientRepository.findEscalationContacts(patient.id);
+          await smsService.sendEmotionalEscalationSms(patient.full_name, contacts);
+          await alertService.createAlert({ patient_id: patient.id, caregiver_id: patient.caregiver_id, alert_type: 'emotional_escalation', message: `${patient.full_name} has persistent sad or anxious messages` });
+        }
+      }
+    } catch (error) {
+      logger.error('[JOB] Emotional escalation sweep failed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+}
+</file>
+
+<file path="src/jobs/medicationReminder.job.ts">
+import cron, { ScheduledTask } from 'node-cron';
+import { logger } from '../config/logger';
+import { formatIST } from '../utils/dateTime';
+import { medicationRepository } from '../modules/medications/medication.repository';
+import { callService } from '../modules/calls/call.service';
+
+export function medicationReminderJob(): ScheduledTask {
+  return cron.schedule('* * * * *', async () => {
+    const currentTime = formatIST(new Date(), 'HH:mm');
+    try {
+      const schedules = (await medicationRepository.findActiveSchedules()).filter((schedule) => schedule.scheduled_time === currentTime);
+      for (const schedule of schedules) {
+        try {
+          const attempts = await medicationRepository.countAttemptsToday(schedule.id);
+          const logs = await medicationRepository.findCallLogsBySchedule(schedule.id);
+          const calledToday = logs.some((log) => log.created_at.slice(0, 10) === new Date().toISOString().slice(0, 10));
+          if (!calledToday && attempts === 0) await callService.initiateCall(schedule.id, 1);
+        } catch (error) {
+          logger.error('[JOB] Medication reminder schedule failed', { scheduleId: schedule.id, error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+    } catch (error) {
+      logger.error('[JOB] Medication reminder job failed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+}
+</file>
+
+<file path="src/jobs/retryMissedCalls.job.ts">
+import cron, { ScheduledTask } from 'node-cron';
+import { subMinutes } from 'date-fns';
+import { supabase } from '../config/supabase';
+import { env } from '../config/env';
+import { logger } from '../config/logger';
+import { retryService } from '../modules/calls/retry.service';
+
+export function retryMissedCallsJob(): ScheduledTask {
+  return cron.schedule('*/3 * * * *', async () => {
+    try {
+      const { data, error } = await supabase.from('call_logs').select('*').in('status', ['no_answer', 'failed']).lt('attempt_number', env.MAX_CALL_RETRIES).gte('created_at', subMinutes(new Date(), 30).toISOString());
+      if (error) throw error;
+      for (const log of data ?? []) await retryService.scheduleRetry(log.schedule_id, log.id, log.attempt_number);
+    } catch (error) {
+      logger.error('[JOB] Retry missed calls failed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+}
+</file>
+
+<file path="src/jobs/scheduler.ts">
+import { logger } from '../config/logger';
+import { dailyNewsRefreshJob } from './dailyNewsRefresh.job';
+import { emotionalEscalationJob } from './emotionalEscalation.job';
+import { medicationReminderJob } from './medicationReminder.job';
+import { retryMissedCallsJob } from './retryMissedCalls.job';
+
+export function startScheduler(): void {
+  medicationReminderJob();
+  logger.info('[SCHEDULER] Registered medication reminder job');
+  retryMissedCallsJob();
+  logger.info('[SCHEDULER] Registered retry missed calls job');
+  emotionalEscalationJob();
+  logger.info('[SCHEDULER] Registered emotional escalation job');
+  dailyNewsRefreshJob();
+  logger.info('[SCHEDULER] Registered daily news refresh job');
+}
+</file>
+
+<file path="src/middleware/auth.middleware.ts">
+import type { NextFunction, Request, Response } from 'express';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { env } from '../config/env';
+import { ApiError } from '../utils/apiError';
+import type { TokenPayload } from '../modules/auth/auth.types';
+
+export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    next(ApiError.unauthorized('Missing bearer token'));
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(header.slice(7), env.JWT_SECRET) as TokenPayload;
+    req.user = { id: decoded.id, email: decoded.email, role: decoded.role };
+    next();
+  } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      next(ApiError.unauthorized('Token expired'));
+      return;
+    }
+    if (error instanceof JsonWebTokenError) {
+      next(ApiError.unauthorized('Invalid token'));
+      return;
+    }
+    next(ApiError.unauthorized());
+  }
+}
+
+export function optionalDemoAuth(req: Request, res: Response, next: NextFunction): void {
+  if (req.query.demo === 'true' || req.params.patientId === 'demo-patient-uuid' || req.params.id === 'demo-patient-uuid') {
+    next();
+    return;
+  }
+  authMiddleware(req, res, next);
+}
+</file>
+
+<file path="src/middleware/error.middleware.ts">
+import type { NextFunction, Request, Response } from 'express';
+import multer from 'multer';
+import { ZodError } from 'zod';
+import { env } from '../config/env';
+import { logger } from '../config/logger';
+import { ApiError } from '../utils/apiError';
+
+export function errorMiddleware(err: Error, _req: Request, res: Response, _next: NextFunction): void {
+  if (err instanceof ApiError) {
+    res.status(err.statusCode).json({ success: false, message: err.message, details: err.details });
+    return;
+  }
+
+  if (err instanceof multer.MulterError) {
+    res.status(400).json({ success: false, message: err.message });
+    return;
+  }
+
+  if (err instanceof ZodError) {
+    res.status(422).json({ success: false, message: 'Validation error', details: err.format() });
+    return;
+  }
+
+  logger.error('[ERROR] Unhandled request error', { message: err.message, stack: err.stack });
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    ...(env.NODE_ENV === 'production' ? {} : { stack: err.stack })
+  });
+}
+</file>
+
+<file path="src/middleware/rateLimit.middleware.ts">
+import rateLimit from 'express-rate-limit';
+
+const standardHeaders = true;
+const legacyHeaders = false;
+
+export const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders, legacyHeaders });
+export const uploadLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 20, standardHeaders, legacyHeaders });
+export const companionLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders, legacyHeaders });
+export const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 200, standardHeaders, legacyHeaders });
+</file>
+
+<file path="src/middleware/upload.middleware.ts">
+import path from 'path';
+import type { NextFunction, Request, Response } from 'express';
+import { prescriptionUpload } from '../config/upload';
+
+declare global {
+  namespace Express {
+    namespace Multer {
+      interface File {
+        publicPath?: string;
+      }
+    }
+  }
+}
+
+export interface UploadedFile extends Express.Multer.File {
+  publicPath: string;
+}
+
+export function handlePrescriptionUpload(req: Request, res: Response, next: NextFunction): void {
+  prescriptionUpload.single('prescription')(req, res, (error: unknown) => {
+    if (error) {
+      next(error instanceof Error ? error : new Error('Upload failed'));
+      return;
+    }
+    if (req.file) {
+            req.file.publicPath = path.join('uploads', 'prescriptions', req.file.filename).split(path.sep).join('/');
+    }
+    next();
+  });
+}
+</file>
+
+<file path="src/middleware/validate.middleware.ts">
+import type { RequestHandler } from 'express';
+import type { ZodSchema } from 'zod';
+import { ZodError } from 'zod';
+import { ApiError } from '../utils/apiError';
+
+function validate<T>(schema: ZodSchema<T>, source: 'body' | 'query' | 'params'): RequestHandler {
+  return (req, _res, next) => {
+    try {
+      const parsed = schema.parse(req[source]);
+      Object.defineProperty(req, source, { value: parsed, writable: true, configurable: true });
+      next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        next(new ApiError(422, 'Validation error', error.errors));
+        return;
+      }
+      next(error);
+    }
+  };
+}
+
+export const validateBody = <T>(schema: ZodSchema<T>): RequestHandler => validate(schema, 'body');
+export const validateQuery = <T>(schema: ZodSchema<T>): RequestHandler => validate(schema, 'query');
+export const validateParams = <T>(schema: ZodSchema<T>): RequestHandler => validate(schema, 'params');
+</file>
+
+<file path="src/modules/alerts/alert.repository.ts">
+import { supabase } from '../../config/supabase';
+import type { Alert } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { isoNow } from '../../utils/dateTime';
+import type { AlertWithPatient, CreateAlertInput } from './alert.types';
+
+export const alertRepository = {
+  async create(data: CreateAlertInput): Promise<Alert> {
+    const result = await supabase.from('alerts').insert({ ...data, sms_sent: false, sms_sent_at: null, resolved: false }).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to create alert');
+    return result.data;
+  },
+  async findByPatientId(patientId: string, includeResolved = false): Promise<Alert[]> {
+    let query = supabase.from('alerts').select('*').eq('patient_id', patientId).order('created_at', { ascending: false });
+    if (!includeResolved) query = query.eq('resolved', false);
+    const { data, error } = await query;
+    if (error) throw ApiError.internal('Failed to list alerts');
+    return data ?? [];
+  },
+  async findByCaregiverId(caregiverId: string, limit = 20): Promise<AlertWithPatient[]> {
+    const { data, error } = await supabase.from('alerts').select('*, patient:patients(full_name, phone)').eq('caregiver_id', caregiverId).order('created_at', { ascending: false }).limit(limit);
+    if (error) throw ApiError.internal('Failed to list caregiver alerts');
+    return (data ?? []) as AlertWithPatient[];
+  },
+  async resolve(id: string): Promise<void> {
+    const { error } = await supabase.from('alerts').update({ resolved: true }).eq('id', id);
+    if (error) throw ApiError.internal('Failed to resolve alert');
+  },
+  async markSmsSent(id: string): Promise<void> {
+    const { error } = await supabase.from('alerts').update({ sms_sent: true, sms_sent_at: isoNow() }).eq('id', id);
+    if (error) throw ApiError.internal('Failed to mark SMS sent');
+  }
+};
+</file>
+
+<file path="src/modules/alerts/alert.service.ts">
+import { ApiError } from '../../utils/apiError';
+import { patientRepository } from '../patients/patient.repository';
+import { alertRepository } from './alert.repository';
+import type { AlertWithPatient, CreateAlertInput } from './alert.types';
+import type { Alert } from '../../types/database';
+
+export const alertService = {
+  createAlert(input: CreateAlertInput): Promise<Alert> {
+    return alertRepository.create(input);
+  },
+  async resolveAlert(id: string, caregiverId: string): Promise<void> {
+    const alerts = await alertRepository.findByCaregiverId(caregiverId, 100);
+    if (!alerts.some((alert) => alert.id === id)) throw ApiError.forbidden('You do not have access to this alert');
+    await alertRepository.resolve(id);
+  },
+  getAlertsForCaregiver(caregiverId: string): Promise<AlertWithPatient[]> {
+    return alertRepository.findByCaregiverId(caregiverId);
+  },
+  async hasRecentEmotionalEscalation(patientId: string): Promise<boolean> {
+    const patient = await patientRepository.findById(patientId);
+    if (!patient) return false;
+    const alerts = await alertRepository.findByPatientId(patientId, true);
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return alerts.some((alert) => alert.alert_type === 'emotional_escalation' && new Date(alert.created_at).getTime() >= cutoff);
+  }
+};
+</file>
+
+<file path="src/modules/alerts/alert.types.ts">
+import type { Alert, Patient } from '../../types/database';
+
+export interface CreateAlertInput {
+  patient_id: string;
+  caregiver_id: string;
+  alert_type: Alert['alert_type'];
+  message: string;
+}
+
+export type AlertWithPatient = Alert & { patient: Pick<Patient, 'full_name' | 'phone'> };
+</file>
+
+<file path="src/modules/auth/auth.controller.ts">
+import type { Request, Response } from 'express';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { successResponse } from '../../utils/apiResponse';
+import { authService } from './auth.service';
+import type { LoginInput, RegisterInput } from './auth.types';
+
+export const authController = {
+  register: asyncHandler(async (req: Request<object, object, RegisterInput>, res: Response) => {
+    const result = await authService.register(req.body);
+    res.status(201).json(successResponse(result, 'Registered successfully'));
+  }),
+  login: asyncHandler(async (req: Request<object, object, LoginInput>, res: Response) => {
+    const result = await authService.login(req.body);
+    res.json(successResponse(result, 'Logged in successfully'));
+  }),
+  me: asyncHandler(async (req: Request, res: Response) => {
+    const user = await authService.getUserById(req.user!.id);
+    res.json(successResponse(user));
+  })
+};
+</file>
+
+<file path="src/modules/auth/auth.service.ts">
+import bcrypt from 'bcryptjs';
+import jwt, { type SignOptions } from 'jsonwebtoken';
+import { env } from '../../config/env';
+import { supabase } from '../../config/supabase';
+import type { User } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { toE164India } from '../../utils/phone';
+import type { AuthResponse, AuthUser, LoginInput, RegisterInput, TokenPayload } from './auth.types';
+
+function toAuthUser(user: User): AuthUser {
+  return { id: user.id, email: user.email, full_name: user.full_name, phone: user.phone, role: user.role };
+}
+
+function signToken(payload: TokenPayload): string {
+  const options: SignOptions = { expiresIn: env.JWT_EXPIRES_IN as SignOptions['expiresIn'] };
+  return jwt.sign(payload, env.JWT_SECRET, options);
+}
+
+export const authService = {
+  async register(input: RegisterInput): Promise<AuthResponse> {
+    const email = input.email.toLowerCase();
+    const existing = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+    if (existing.error) throw ApiError.internal('Failed to check existing user');
+    if (existing.data) throw ApiError.conflict('Email is already registered');
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    const { data, error } = await supabase.from('users').insert({ email, password_hash: passwordHash, full_name: input.full_name, phone: toE164India(input.phone), role: 'caregiver' }).select('*').single();
+    if (error || !data) throw ApiError.internal('Failed to create user');
+    const user = toAuthUser(data);
+    return { user, token: signToken({ id: user.id, email: user.email, role: user.role }) };
+  },
+  async login(input: LoginInput): Promise<AuthResponse> {
+    const { data, error } = await supabase.from('users').select('*').eq('email', input.email.toLowerCase()).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load user');
+    if (!data) throw ApiError.unauthorized('Invalid credentials');
+    const matches = await bcrypt.compare(input.password, data.password_hash);
+    if (!matches) throw ApiError.unauthorized('Invalid credentials');
+    const user = toAuthUser(data);
+    return { user, token: signToken({ id: user.id, email: user.email, role: user.role }) };
+  },
+  async getUserById(id: string): Promise<AuthUser> {
+    const { data, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load user');
+    if (!data) throw ApiError.notFound('User');
+    return toAuthUser(data);
+  }
+};
+</file>
+
+<file path="src/modules/auth/auth.types.ts">
+import { z } from 'zod';
+
+export const RegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).regex(/[A-Z]/, 'Password must contain an uppercase letter').regex(/[0-9]/, 'Password must contain a number'),
+  full_name: z.string().min(2),
+  phone: z.string().min(10)
+});
+
+export const LoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1)
+});
+
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type LoginInput = z.infer<typeof LoginSchema>;
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  role: 'caregiver' | 'admin';
+}
+
+export interface TokenPayload {
+  id: string;
+  email: string;
+  role: 'caregiver' | 'admin';
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token: string;
+}
+</file>
+
+<file path="src/modules/auth/auth.validator.ts">
+export { LoginSchema, RegisterSchema } from './auth.types';
+</file>
+
+<file path="src/modules/calls/call.controller.ts">
+import type { Request, Response } from 'express';
+import { ApiError } from '../../utils/apiError';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { medicationRepository } from '../medications/medication.repository';
+import { callService } from './call.service';
+
+export const callController = {
+  getCallLogs: asyncHandler(async (req: Request<object, object, object, { scheduleId?: string }>, res: Response) => {
+    if (!req.query.scheduleId) throw ApiError.badRequest('scheduleId query parameter is required');
+    const logs = await medicationRepository.findCallLogsBySchedule(req.query.scheduleId);
+    res.json(successResponse(logs));
+  }),
+  triggerCall: asyncHandler(async (req: Request<object, object, { scheduleId?: string }>, res: Response) => {
+    if (!req.body.scheduleId) throw ApiError.badRequest('scheduleId is required');
+    const log = await callService.initiateCall(req.body.scheduleId, 1);
+    res.json(successResponse(log, 'Call triggered'));
+  })
+};
+</file>
+
+<file path="src/modules/calls/call.service.ts">
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import { ApiError } from '../../utils/apiError';
+import { isoNow } from '../../utils/dateTime';
+import { buildMedicationReminderScript } from '../../utils/language';
+import { patientRepository } from '../patients/patient.repository';
+import { medicationRepository } from '../medications/medication.repository';
+import type { CallLog } from '../../types/database';
+import type { CallStatusWebhookPayload, IvrWebhookPayload } from './call.types';
+import { exotelClient } from './exotel.client';
+import { retryService } from './retry.service';
+import { smsService } from './sms.service';
+import { ttsService } from './tts.service';
+
+function mapStatus(status: string): CallLog['status'] {
+  const normalized = status.toLowerCase().replace('-', '_');
+  if (['completed', 'answered', 'in_progress'].includes(normalized)) return 'answered';
+  if (['no_answer', 'busy', 'canceled'].includes(normalized)) return 'no_answer';
+  if (['failed'].includes(normalized)) return 'failed';
+  return 'initiated';
+}
+
+export const callService = {
+  async initiateCall(scheduleId: string, attemptNumber: number): Promise<CallLog> {
+    const schedule = await medicationRepository.findScheduleById(scheduleId);
+    if (!schedule) throw ApiError.notFound('Medication schedule');
+    const patient = await patientRepository.findById(schedule.patient_id);
+    if (!patient) throw ApiError.notFound('Patient');
+    const script = buildMedicationReminderScript(schedule.medicine_name, schedule.custom_message, schedule.language);
+    const audioUrl = await ttsService.synthesizeToUrl(script, schedule.language, schedule.id);
+    const call = await exotelClient.initiateCall({ to: patient.phone, from: env.EXOTEL_CALLER_ID, callerId: env.EXOTEL_CALLER_ID, statusCallback: `${env.BACKEND_URL}/webhooks/exotel/status`, customField: schedule.id, audioUrl });
+    const log = await medicationRepository.createCallLog({ schedule_id: schedule.id, patient_id: patient.id, exotel_call_sid: call.sid, status: 'initiated', attempt_number: attemptNumber, initiated_at: isoNow(), answered_at: null, ivr_response: null });
+    logger.info('[CALL] Medication reminder initiated', { scheduleId, callSid: call.sid, attemptNumber });
+    return log;
+  },
+  async handleIvrResponse(payload: IvrWebhookPayload): Promise<void> {
+    const log = await medicationRepository.findCallLogBySid(payload.CallSid);
+    if (!log) throw ApiError.notFound('Call log');
+    const schedule = await medicationRepository.findScheduleById(log.schedule_id);
+    if (!schedule) throw ApiError.notFound('Medication schedule');
+    const patient = await patientRepository.findById(log.patient_id);
+    if (!patient) throw ApiError.notFound('Patient');
+    const contacts = await patientRepository.findEscalationContacts(patient.id);
+    if (payload.Digits === '1') {
+      await medicationRepository.updateCallLog(log.id, { status: 'confirmed', ivr_response: '1', answered_at: isoNow() });
+      await retryService.cancelRetries(schedule.id);
+      await smsService.sendMedicationConfirmedSms(patient.full_name, schedule.medicine_name, contacts, schedule.language);
+    } else {
+      await medicationRepository.updateCallLog(log.id, { status: 'rejected', ivr_response: payload.Digits === '2' ? '2' : null, answered_at: isoNow() });
+    }
+  },
+  async handleCallStatusUpdate(payload: CallStatusWebhookPayload): Promise<void> {
+    const log = await medicationRepository.findCallLogBySid(payload.CallSid);
+    if (!log) return;
+    const status = mapStatus(payload.Status);
+    const updated = await medicationRepository.updateCallLog(log.id, { status, answered_at: status === 'answered' ? isoNow() : log.answered_at });
+    if (status === 'no_answer' || status === 'failed') await retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+  }
+};
+</file>
+
+<file path="src/modules/calls/call.types.ts">
+import type { Language } from '../../types/common';
+
+export interface ExotelCallRequest {
+  to: string;
+  from: string;
+  callerId: string;
+  statusCallback?: string;
+  customField?: string;
+  audioUrl?: string;
+}
+
+export interface ExotelCallResponse {
+  sid: string;
+  status: string;
+  direction: string;
+}
+
+export interface SmsRequest {
+  to: string;
+  from: string;
+  body: string;
+}
+
+export interface TtsRequest {
+  text: string;
+  language: Language;
+  voice?: string;
+}
+
+export interface IvrWebhookPayload {
+  CallSid: string;
+  DialCallStatus: string;
+  Digits: string;
+  To: string;
+  From: string;
+}
+
+export interface CallStatusWebhookPayload {
+  CallSid: string;
+  Status: string;
+  To: string;
+  From: string;
+  Duration?: string;
+}
+</file>
+
+<file path="src/modules/calls/exotel.client.ts">
+import axios, { AxiosError } from 'axios';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import { ApiError } from '../../utils/apiError';
+import type { ExotelCallRequest, ExotelCallResponse, SmsRequest } from './call.types';
+
+const baseURL = `https://${env.EXOTEL_API_KEY}:${env.EXOTEL_API_TOKEN}@${env.EXOTEL_SUBDOMAIN}/v1/Accounts/${env.EXOTEL_SID}/`;
+const client = axios.create({ baseURL, timeout: 10000 });
+
+function form(data: Record<string, string | undefined>): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) if (value !== undefined) params.append(key, value);
+  return params;
+}
+
+function exotelError(error: unknown): ApiError {
+  if (error instanceof AxiosError) {
+    logger.error('[EXOTEL] HTTP error', { status: error.response?.status, data: error.response?.data });
+    return ApiError.internal('Exotel request failed');
+  }
+  return ApiError.internal('Exotel request failed');
+}
+
+export const exotelClient = {
+  async initiateCall(request: ExotelCallRequest): Promise<ExotelCallResponse> {
+    try {
+      const { data } = await client.post('Calls/connect.json', form({
+        From: request.to,
+        To: request.callerId,
+        CallerId: request.callerId,
+        StatusCallback: request.statusCallback,
+        CustomField: request.customField,
+        Url: request.audioUrl
+      }));
+      const call = (data as { Call?: { Sid?: string; Status?: string; Direction?: string } }).Call;
+      return { sid: call?.Sid ?? `local-${Date.now()}`, status: call?.Status ?? 'initiated', direction: call?.Direction ?? 'outbound-api' };
+    } catch (error) {
+      throw exotelError(error);
+    }
+  },
+  async sendSms(request: SmsRequest): Promise<void> {
+    try {
+      await client.post('Sms/send.json', form({ From: request.from, To: request.to, Body: request.body }));
+      logger.info('[EXOTEL] SMS sent', { to: request.to });
+    } catch (error) {
+      throw exotelError(error);
+    }
+  }
+};
+</file>
+
+<file path="src/modules/calls/retry.service.ts">
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import { supabase } from '../../config/supabase';
+import { ApiError } from '../../utils/apiError';
+import { patientRepository } from '../patients/patient.repository';
+import { medicationRepository } from '../medications/medication.repository';
+import { alertService } from '../alerts/alert.service';
+import { smsService } from './sms.service';
+
+const pendingRetries = new Map<string, NodeJS.Timeout>();
+
+export const retryService = {
+  async scheduleRetry(scheduleId: string, _callLogId: string, attemptNumber: number): Promise<void> {
+    const schedule = await medicationRepository.findScheduleById(scheduleId);
+    if (!schedule) throw ApiError.notFound('Medication schedule');
+    if (attemptNumber >= env.MAX_CALL_RETRIES) {
+      const patient = await patientRepository.findById(schedule.patient_id);
+      if (!patient) throw ApiError.notFound('Patient');
+      const contacts = await patientRepository.findEscalationContacts(patient.id);
+      await smsService.sendMedicationMissedSms(patient.full_name, schedule.medicine_name, contacts, 'Saya.ai');
+      await alertService.createAlert({ patient_id: patient.id, caregiver_id: schedule.caregiver_id, alert_type: 'missed_medication', message: `${patient.full_name} missed ${schedule.medicine_name} after ${attemptNumber} attempts` });
+      return;
+    }
+    const key = `${scheduleId}:${attemptNumber + 1}`;
+    if (pendingRetries.has(key)) return;
+    const timeout = setTimeout(() => {
+      pendingRetries.delete(key);
+      import('./call.service').then(({ callService }) => callService.initiateCall(scheduleId, attemptNumber + 1)).catch((error: Error) => logger.error('[CALL] Retry failed', { scheduleId, error: error.message }));
+    }, env.RETRY_INTERVAL_MINUTES * 60 * 1000);
+    pendingRetries.set(key, timeout);
+    logger.info('[CALL] Retry scheduled', { scheduleId, nextAttempt: attemptNumber + 1 });
+  },
+  async cancelRetries(scheduleId: string): Promise<void> {
+    for (const [key, timeout] of pendingRetries.entries()) {
+      if (key.startsWith(`${scheduleId}:`)) {
+        clearTimeout(timeout);
+        pendingRetries.delete(key);
+      }
+    }
+    await supabase.from('call_logs').update({ status: 'confirmed' }).eq('schedule_id', scheduleId).eq('status', 'pending');
+  }
+};
+</file>
+
+<file path="src/modules/calls/sms.service.ts">
+import type { ApprovedContact } from '../../types/database';
+import type { Language } from '../../types/common';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import { buildConfirmedMedicationSMS, buildEmotionalEscalationSMS, buildMissedMedicationSMS } from '../../utils/language';
+import { exotelClient } from './exotel.client';
+
+async function sendToContacts(contacts: ApprovedContact[], body: string): Promise<void> {
+  await Promise.all(contacts.map(async (contact) => {
+    try {
+      await exotelClient.sendSms({ to: contact.phone, from: env.EXOTEL_CALLER_ID, body });
+      logger.info('[SMS] Sent', { contactId: contact.id });
+    } catch (error) {
+      logger.error('[SMS] Failed', { contactId: contact.id, error: error instanceof Error ? error.message : String(error) });
+    }
+  }));
+}
+
+export const smsService = {
+  sendMedicationConfirmedSms(patientName: string, medicineName: string, contacts: ApprovedContact[], language: Language): Promise<void> {
+    return sendToContacts(contacts, buildConfirmedMedicationSMS(patientName, medicineName, language));
+  },
+  sendMedicationMissedSms(patientName: string, medicineName: string, contacts: ApprovedContact[], caregiverName: string): Promise<void> {
+    return sendToContacts(contacts, buildMissedMedicationSMS(patientName, medicineName, caregiverName, 'en'));
+  },
+  sendEmotionalEscalationSms(patientName: string, contacts: ApprovedContact[]): Promise<void> {
+    return sendToContacts(contacts, buildEmotionalEscalationSMS(patientName));
+  },
+  async sendCompanionRequestSms(patientName: string, requestText: string, targetContact: ApprovedContact): Promise<void> {
+    await sendToContacts([targetContact], `Saya.ai request from ${patientName}: ${requestText}`);
+  }
+};
+</file>
+
+<file path="src/modules/calls/tts.service.ts">
+import fs from 'fs';
+import path from 'path';
+import AWS from 'aws-sdk';
+import { env } from '../../config/env';
+import { ApiError } from '../../utils/apiError';
+import type { Language } from '../../types/common';
+import type { TtsRequest } from './call.types';
+
+const polly = new AWS.Polly({ accessKeyId: env.AWS_ACCESS_KEY_ID, secretAccessKey: env.AWS_SECRET_ACCESS_KEY, region: env.AWS_REGION });
+
+export const ttsService = {
+  async synthesizeSpeech(request: TtsRequest): Promise<Buffer> {
+    const voice = request.voice ?? (request.language === 'hi' ? 'Aditi' : 'Raveena');
+    const response = await polly.synthesizeSpeech({ OutputFormat: 'mp3', Text: `<speak>${request.text}</speak>`, TextType: 'ssml', VoiceId: voice }).promise();
+    if (!response.AudioStream) throw ApiError.internal('Amazon Polly returned no audio');
+    return Buffer.isBuffer(response.AudioStream) ? response.AudioStream : Buffer.from(response.AudioStream as Uint8Array);
+  },
+  async synthesizeToUrl(text: string, language: Language, scheduleId: string): Promise<string> {
+    const dir = path.resolve(process.cwd(), env.UPLOAD_DIR, 'tts');
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${scheduleId}.mp3`;
+    const audio = await this.synthesizeSpeech({ text, language });
+    fs.writeFileSync(path.join(dir, filename), audio);
+    return `${env.BACKEND_URL}/uploads/tts/${filename}`;
+  }
+};
+</file>
+
+<file path="src/modules/companion/companion.controller.ts">
+import type { Request, Response } from 'express';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { companionService } from './companion.service';
+import type { ChatRequest } from './companion.types';
+
+export const companionController = {
+  chat: asyncHandler(async (req: Request<object, object, ChatRequest>, res: Response) => {
+    const response = await companionService.chat(req.body, req.user!.id);
+    res.json(successResponse(response));
+  }),
+  getHistory: asyncHandler(async (req: Request<{ patientId: string }>, res: Response) => {
+    const history = await companionService.getHistory(req.params.patientId, 50);
+    res.json(successResponse(history));
+  })
+};
+</file>
+
+<file path="src/modules/companion/companion.prompts.ts">
+import type { NewsCache, Patient, PatientMemory } from '../../types/database';
+
+export function buildCompanionSystemPrompt(patient: Patient, memories: PatientMemory[], recentNews: NewsCache[], tone: string): string {
+  const language = patient.language_preference === 'hi' ? 'Hindi' : 'English';
+  const memoryText = memories.length ? memories.map((m) => `- ${m.memory_key}: ${m.memory_value}`).join('\n') : '- No memories yet';
+  const newsText = recentNews.length ? recentNews.slice(0, 3).map((n) => `- ${n.headline}`).join('\n') : '- No current news available';
+  return `You are Saya, a warm and caring AI companion for elderly people in India.
+
+Patient Name: ${patient.full_name}
+Language: ${language}
+Tone: ${tone}
+
+What you remember about this person:
+${memoryText}
+
+Today's news context (use naturally in conversation, don't list it all at once):
+${newsText}
+
+Rules:
+1. NEVER say you are an AI or mention your model name.
+2. Respond ONLY in ${language} unless the patient switches languages.
+3. If the patient mentions something personal (favourite food, family, health), remember it by including [MEMORY:key=value] at the end of your reply.
+4. You have full memory of past conversations - reference them naturally.
+5. Be warm, patient, and never rushed.
+6. If the patient says they want to contact family, respond that you will send them a message and include [ACTION:contact_family:message] at the end.
+7. Never give medical advice. If health concerns arise, gently suggest consulting their doctor.
+8. Keep replies concise - 2-4 sentences typically.`;
+}
+
+export function buildSentimentPrompt(): string {
+  return 'Classify the emotional tone of the user message as exactly one of: joy, neutral, anxiety, sadness. Return only JSON matching the schema.';
+}
+
+export const SENTIMENT_JSON_SCHEMA = '{"sentiment":"joy|neutral|anxiety|sadness"}';
+</file>
+
+<file path="src/modules/companion/companion.service.ts">
+import Groq from 'groq-sdk';
+import { env } from '../../config/env';
+import { supabase } from '../../config/supabase';
+import { ApiError } from '../../utils/apiError';
+import { alertService } from '../alerts/alert.service';
+import { smsService } from '../calls/sms.service';
+import { newsService } from '../news/news.service';
+import { patientRepository } from '../patients/patient.repository';
+import { patientService } from '../patients/patient.service';
+import { buildCompanionSystemPrompt } from './companion.prompts';
+import type { ChatRequest, ChatResponse } from './companion.types';
+import { memoryService } from './memory.service';
+import { sentimentService } from './sentiment.service';
+
+const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+
+export const companionService = {
+  async chat(request: ChatRequest, caregiverId: string): Promise<ChatResponse> {
+    await patientService.assertCaregiverOwnsPatient(request.patient_id, caregiverId);
+    const patient = await patientRepository.findById(request.patient_id);
+    if (!patient) throw ApiError.notFound('Patient');
+    const [memories, recentNews, history, contacts] = await Promise.all([
+      memoryService.getMemories(patient.id),
+      newsService.getLatestNews(5),
+      this.getHistory(patient.id, 20),
+      patientRepository.findEscalationContacts(patient.id)
+    ]);
+    const system = buildCompanionSystemPrompt(patient, memories, recentNews, patient.companion_tone);
+    const completion = await groq.chat.completions.create({
+      model: 'llama3-70b-8192',
+      temperature: 0.6,
+      max_tokens: 500,
+      messages: [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })), { role: 'user', content: request.message }]
+    });
+    const rawReply = completion.choices[0]?.message?.content ?? 'I am here with you.';
+    const familyAction = memoryService.extractFamilyActionRequest(rawReply);
+    const memoriesUpdated = await memoryService.extractAndSaveMemories(patient.id, rawReply);
+    const cleanReply = memoryService.stripControlTags(rawReply);
+    const sentiment = await sentimentService.analyzeSentiment(request.message, request.language);
+    await supabase.from('companion_messages').insert([{ patient_id: patient.id, role: 'user', content: request.message, sentiment }, { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }]);
+    if (familyAction.hasAction && familyAction.message) {
+      const target = contacts[0];
+      if (target) {
+        await smsService.sendCompanionRequestSms(patient.full_name, familyAction.message, target);
+        await alertService.createAlert({ patient_id: patient.id, caregiver_id: caregiverId, alert_type: 'companion_request', message: familyAction.message });
+      }
+    }
+    await sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
+    return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated };
+  },
+  async getHistory(patientId: string, limit = 50) {
+    const { data, error } = await supabase.from('companion_messages').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(limit);
+    if (error) throw ApiError.internal('Failed to load companion history');
+    return (data ?? []).reverse();
+  }
+};
+</file>
+
+<file path="src/modules/companion/companion.types.ts">
+import type { Language, SentimentTag } from '../../types/common';
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatRequest {
+  patient_id: string;
+  message: string;
+  language: Language;
+}
+
+export interface ChatResponse {
+  reply: string;
+  sentiment: SentimentTag;
+  memories_updated: boolean;
+}
+
+export interface MemoryEntry {
+  key: string;
+  value: string;
+}
+</file>
+
+<file path="src/modules/companion/memory.service.ts">
+import { supabase } from '../../config/supabase';
+import type { PatientMemory } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+
+export const memoryService = {
+  async getMemories(patientId: string): Promise<PatientMemory[]> {
+    const { data, error } = await supabase.from('patient_memories').select('*').eq('patient_id', patientId).order('memory_key');
+    if (error) throw ApiError.internal('Failed to load memories');
+    return data ?? [];
+  },
+  async upsertMemory(patientId: string, key: string, value: string): Promise<void> {
+    const { error } = await supabase.from('patient_memories').upsert({ patient_id: patientId, memory_key: key, memory_value: value }, { onConflict: 'patient_id,memory_key' });
+    if (error) throw ApiError.internal('Failed to save memory');
+  },
+  async extractAndSaveMemories(patientId: string, companionReply: string): Promise<boolean> {
+    const matches = Array.from(companionReply.matchAll(/\[MEMORY:([^=\]]+)=([^\]]+)\]/g));
+    for (const match of matches) await this.upsertMemory(patientId, match[1].trim(), match[2].trim());
+    return matches.length > 0;
+  },
+  stripControlTags(reply: string): string {
+    return reply.replace(/\[MEMORY:[^\]]+\]/g, '').replace(/\[ACTION:contact_family:[^\]]+\]/g, '').trim();
+  },
+  extractFamilyActionRequest(companionReply: string): { hasAction: boolean; message: string | null } {
+    const match = /\[ACTION:contact_family:([^\]]+)\]/.exec(companionReply);
+    return { hasAction: Boolean(match), message: match?.[1].trim() ?? null };
+  }
+};
+</file>
+
+<file path="src/modules/companion/sentiment.service.ts">
+import Groq from 'groq-sdk';
+import { env } from '../../config/env';
+import { supabase } from '../../config/supabase';
+import type { ApprovedContact } from '../../types/database';
+import type { Language, SentimentTag } from '../../types/common';
+import { alertService } from '../alerts/alert.service';
+import { patientRepository } from '../patients/patient.repository';
+import { smsService } from '../calls/sms.service';
+import { buildSentimentPrompt, SENTIMENT_JSON_SCHEMA } from './companion.prompts';
+
+const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+const allowed: SentimentTag[] = ['joy', 'neutral', 'anxiety', 'sadness'];
+
+export const sentimentService = {
+  async analyzeSentiment(message: string, _language: Language): Promise<SentimentTag> {
+    const completion = await groq.chat.completions.create({ model: 'llama3-70b-8192', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${buildSentimentPrompt()} Schema: ${SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] });
+    const raw = completion.choices[0]?.message?.content ?? '{"sentiment":"neutral"}';
+    try {
+      const parsed = JSON.parse(raw) as { sentiment?: string };
+      return allowed.includes(parsed.sentiment as SentimentTag) ? parsed.sentiment as SentimentTag : 'neutral';
+    } catch {
+      return allowed.find((tag) => raw.toLowerCase().includes(tag)) ?? 'neutral';
+    }
+  },
+  async checkAndEscalate(patientId: string, currentSentiment: SentimentTag, contacts: ApprovedContact[], patientName: string): Promise<boolean> {
+    if (!['anxiety', 'sadness'].includes(currentSentiment)) return false;
+    const { data, error } = await supabase.from('companion_messages').select('*').eq('patient_id', patientId).eq('role', 'user').order('created_at', { ascending: false }).limit(2);
+    if (error) return false;
+    const sentiments = [currentSentiment, ...(data ?? []).slice(0, 1).map((m) => m.sentiment)].filter(Boolean);
+    const persistent = sentiments.length >= 2 && sentiments.every((tag) => tag === 'anxiety' || tag === 'sadness');
+    if (!persistent) return false;
+    if (await alertService.hasRecentEmotionalEscalation(patientId)) return false;
+    await smsService.sendEmotionalEscalationSms(patientName, contacts);
+    const patient = await patientRepository.findById(patientId);
+    if (patient) await alertService.createAlert({ patient_id: patientId, caregiver_id: patient.caregiver_id, alert_type: 'emotional_escalation', message: `${patientName} sounded sad or anxious in two consecutive messages` });
+    return true;
+  }
+};
+</file>
+
+<file path="src/modules/dashboard/dashboard.controller.ts">
+import type { Request, Response } from 'express';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { dashboardService } from './dashboard.service';
+import { demoVitalsService } from './demoVitals.service';
+
+export const dashboardController = {
+  getSummary: asyncHandler(async (req: Request<object, object, object, { demo?: string }>, res: Response) => {
+    const data = await dashboardService.getDashboardData(req.user?.id ?? 'demo-caregiver-uuid', req.query.demo === 'true');
+    res.json(successResponse(data));
+  }),
+  getPatient: asyncHandler(async (req: Request<{ id: string }, object, object, { demo?: string }>, res: Response) => {
+    const data = await dashboardService.getPatientDashboard(req.params.id, req.user?.id ?? 'demo-caregiver-uuid', req.query.demo === 'true');
+    res.json(successResponse(data));
+  }),
+  getVitals: asyncHandler(async (req: Request<{ id: string }, object, object, { metric?: string }>, res: Response) => {
+    const data = await demoVitalsService.getDemoVitals(req.params.id, req.query.metric);
+    res.json(successResponse(data));
+  })
+};
+</file>
+
+<file path="src/modules/dashboard/dashboard.service.ts">
+import { supabase } from '../../config/supabase';
+import { DEMO_PRESCRIPTIONS } from '../../data/demoPrescriptions';
+import type { Alert, CallLog, MedicationSchedule, Patient } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { alertRepository } from '../alerts/alert.repository';
+import { medicationRepository } from '../medications/medication.repository';
+import { patientRepository } from '../patients/patient.repository';
+import type { PatientSummary } from '../patients/patient.types';
+import { prescriptionRepository } from '../prescriptions/prescription.repository';
+import { demoVitalsService } from './demoVitals.service';
+
+export interface DashboardData {
+  patients: PatientSummary[];
+  recentAlerts: Alert[];
+  activeSchedules: MedicationSchedule[];
+  recentCallLogs: CallLog[];
+}
+
+export interface PatientDashboardData {
+  patient: Patient;
+  prescriptions: unknown[];
+  schedules: MedicationSchedule[];
+  callLogs: CallLog[];
+  companionMessageCount: number;
+  vitals: unknown[];
+}
+
+const demoPatient: Patient = { id: 'demo-patient-uuid', caregiver_id: 'demo-caregiver-uuid', full_name: 'Ramesh Kumar', phone: '+919876543210', date_of_birth: '1948-01-01', language_preference: 'hi', companion_tone: 'warm', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+
+export const dashboardService = {
+  async getDashboardData(caregiverId: string, demo = false): Promise<DashboardData> {
+    if (demo) return { patients: [demoPatient], recentAlerts: [], activeSchedules: [], recentCallLogs: [] };
+    const patients = await patientRepository.findByCaregiverId(caregiverId);
+    const recentAlerts = await alertRepository.findByCaregiverId(caregiverId, 5) as Alert[];
+    const activeSchedules = (await Promise.all(patients.map((patient) => medicationRepository.findSchedulesByPatient(patient.id)))).flat();
+    const { data, error } = await supabase.from('call_logs').select('*').in('patient_id', patients.map((p) => p.id)).order('created_at', { ascending: false }).limit(10);
+    if (error) throw ApiError.internal('Failed to load call logs');
+    return { patients, recentAlerts, activeSchedules, recentCallLogs: data ?? [] };
+  },
+  async getPatientDashboard(patientId: string, caregiverId: string, demo = false): Promise<PatientDashboardData> {
+    if (demo || patientId === 'demo-patient-uuid') return { patient: demoPatient, prescriptions: DEMO_PRESCRIPTIONS, schedules: [], callLogs: [], companionMessageCount: 0, vitals: await demoVitalsService.getDemoVitals(patientId) };
+    const patient = await patientRepository.findById(patientId);
+    if (!patient) throw ApiError.notFound('Patient');
+    if (patient.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this patient');
+    const [prescriptions, schedules, vitals, countResult] = await Promise.all([
+      prescriptionRepository.findByPatientId(patientId),
+      medicationRepository.findSchedulesByPatient(patientId),
+      demoVitalsService.getDemoVitals(patientId),
+      supabase.from('companion_messages').select('*', { count: 'exact', head: true }).eq('patient_id', patientId)
+    ]);
+    const logs = (await Promise.all(schedules.map((schedule) => medicationRepository.findCallLogsBySchedule(schedule.id)))).flat();
+    return { patient, prescriptions, schedules, callLogs: logs, companionMessageCount: countResult.count ?? 0, vitals };
+  }
+};
+</file>
+
+<file path="src/modules/dashboard/demoVitals.service.ts">
+import { supabase } from '../../config/supabase';
+import { DEMO_VITALS } from '../../data/demoVitals';
+import type { DemoVital } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+
+export const demoVitalsService = {
+  async getDemoVitals(patientId: string, metric?: string): Promise<DemoVital[]> {
+    let query = supabase.from('demo_vitals').select('*').eq('patient_id', patientId).order('recorded_at');
+    if (metric) query = query.eq('metric', metric as DemoVital['metric']);
+    const { data, error } = await query;
+    if (error) throw ApiError.internal('Failed to load vitals');
+    const rows = data ?? [];
+    if (rows.length > 0) return rows;
+    return DEMO_VITALS.filter((vital) => vital.patient_id === patientId && (!metric || vital.metric === metric));
+  },
+  async seedDemoVitals(patientId: string): Promise<void> {
+    const rows = DEMO_VITALS.map((vital) => ({ ...vital, patient_id: patientId }));
+    const { error } = await supabase.from('demo_vitals').upsert(rows);
+    if (error) throw ApiError.internal('Failed to seed demo vitals');
+  }
+};
+</file>
+
+<file path="src/modules/medications/medication.controller.ts">
+import type { Request, Response } from 'express';
+import { ApiError } from '../../utils/apiError';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { medicationService } from './medication.service';
+import type { CreateScheduleInput } from './medication.types';
+
+export const medicationController = {
+  create: asyncHandler(async (req: Request<object, object, CreateScheduleInput>, res: Response) => {
+    const schedule = await medicationService.createSchedule(req.body, req.user!.id);
+    res.status(201).json(successResponse(schedule, 'Medication schedule created'));
+  }),
+  list: asyncHandler(async (req: Request<object, object, object, { patientId?: string }>, res: Response) => {
+    if (!req.query.patientId) throw ApiError.badRequest('patientId query parameter is required');
+    const schedules = await medicationService.listSchedules(req.query.patientId, req.user!.id);
+    res.json(successResponse(schedules));
+  }),
+  trigger: asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
+    const log = await medicationService.triggerImmediateCall(req.params.id, req.user!.id);
+    res.json(successResponse(log, 'Call triggered'));
+  }),
+  delete: asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
+    await medicationService.deleteSchedule(req.params.id, req.user!.id);
+    res.json(successResponse({ id: req.params.id }, 'Medication schedule deactivated'));
+  })
+};
+</file>
+
+<file path="src/modules/medications/medication.repository.ts">
+import { formatISO, startOfDay } from 'date-fns';
+import { supabase } from '../../config/supabase';
+import type { CallLog, MedicationSchedule } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+
+type ScheduleCreate = Omit<MedicationSchedule, 'id' | 'created_at' | 'updated_at'>;
+type CallLogCreate = Omit<CallLog, 'id' | 'created_at'>;
+
+export const medicationRepository = {
+  async createSchedule(data: ScheduleCreate): Promise<MedicationSchedule> {
+    const result = await supabase.from('medication_schedules').insert(data).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to create schedule');
+    return result.data;
+  },
+  async findScheduleById(id: string): Promise<MedicationSchedule | null> {
+    const { data, error } = await supabase.from('medication_schedules').select('*').eq('id', id).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load schedule');
+    return data;
+  },
+  async findActiveSchedules(): Promise<MedicationSchedule[]> {
+    const { data, error } = await supabase.from('medication_schedules').select('*').eq('active', true);
+    if (error) throw ApiError.internal('Failed to load active schedules');
+    return data ?? [];
+  },
+  async findSchedulesByPatient(patientId: string): Promise<MedicationSchedule[]> {
+    const { data, error } = await supabase.from('medication_schedules').select('*').eq('patient_id', patientId).eq('active', true).order('scheduled_time');
+    if (error) throw ApiError.internal('Failed to list schedules');
+    return data ?? [];
+  },
+  async deactivateSchedule(id: string): Promise<void> {
+    const { error } = await supabase.from('medication_schedules').update({ active: false }).eq('id', id);
+    if (error) throw ApiError.internal('Failed to deactivate schedule');
+  },
+  async createCallLog(data: CallLogCreate): Promise<CallLog> {
+    const result = await supabase.from('call_logs').insert(data).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to create call log');
+    return result.data;
+  },
+  async updateCallLog(id: string, updates: Partial<CallLog>): Promise<CallLog> {
+    const result = await supabase.from('call_logs').update(updates).eq('id', id).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to update call log');
+    return result.data;
+  },
+  async findCallLogBySid(sid: string): Promise<CallLog | null> {
+    const { data, error } = await supabase.from('call_logs').select('*').eq('exotel_call_sid', sid).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load call log');
+    return data;
+  },
+  async findCallLogsBySchedule(scheduleId: string): Promise<CallLog[]> {
+    const { data, error } = await supabase.from('call_logs').select('*').eq('schedule_id', scheduleId).order('created_at', { ascending: false });
+    if (error) throw ApiError.internal('Failed to list call logs');
+    return data ?? [];
+  },
+  async countAttemptsToday(scheduleId: string): Promise<number> {
+    const { count, error } = await supabase.from('call_logs').select('*', { count: 'exact', head: true }).eq('schedule_id', scheduleId).gte('created_at', formatISO(startOfDay(new Date()))).in('status', ['no_answer', 'failed']);
+    if (error) throw ApiError.internal('Failed to count attempts');
+    return count ?? 0;
+  }
+};
+</file>
+
+<file path="src/modules/medications/medication.service.ts">
+import type { CallLog, MedicationSchedule } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { callService } from '../calls/call.service';
+import { medicationRepository } from './medication.repository';
+import { scheduleService } from './schedule.service';
+import type { CreateScheduleInput } from './medication.types';
+
+export const medicationService = {
+  createSchedule(input: CreateScheduleInput, caregiverId: string): Promise<MedicationSchedule> {
+    return scheduleService.createSchedule(input, caregiverId);
+  },
+  async triggerImmediateCall(scheduleId: string, caregiverId: string): Promise<CallLog> {
+    const schedule = await medicationRepository.findScheduleById(scheduleId);
+    if (!schedule) throw ApiError.notFound('Medication schedule');
+    if (schedule.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this schedule');
+    return callService.initiateCall(scheduleId, 1);
+  },
+  listSchedules(patientId: string, caregiverId: string): Promise<MedicationSchedule[]> {
+    return scheduleService.getSchedulesForPatient(patientId, caregiverId);
+  },
+  deleteSchedule(scheduleId: string, caregiverId: string): Promise<void> {
+    return scheduleService.deleteSchedule(scheduleId, caregiverId);
+  }
+};
+</file>
+
+<file path="src/modules/medications/medication.types.ts">
+import { z } from 'zod';
+import type { CallLog, MedicationSchedule } from '../../types/database';
+
+export const CreateScheduleSchema = z.object({
+  patient_id: z.string().uuid(),
+  medicine_name: z.string().min(2),
+  scheduled_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  custom_message: z.string().max(200).optional(),
+  language: z.enum(['hi', 'en']).default('hi')
+});
+
+export type CreateScheduleInput = z.infer<typeof CreateScheduleSchema>;
+export type ScheduleWithCallLogs = MedicationSchedule & { call_logs: CallLog[] };
+</file>
+
+<file path="src/modules/medications/schedule.service.ts">
+import type { MedicationSchedule } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { parseScheduleTime } from '../../utils/dateTime';
+import { patientService } from '../patients/patient.service';
+import { medicationRepository } from './medication.repository';
+import type { CreateScheduleInput } from './medication.types';
+
+export const scheduleService = {
+  async createSchedule(input: CreateScheduleInput, caregiverId: string): Promise<MedicationSchedule> {
+    await patientService.assertCaregiverOwnsPatient(input.patient_id, caregiverId);
+    parseScheduleTime(input.scheduled_time);
+    return medicationRepository.createSchedule({ patient_id: input.patient_id, caregiver_id: caregiverId, medicine_name: input.medicine_name, scheduled_time: input.scheduled_time, custom_message: input.custom_message ?? null, language: input.language, active: true });
+  },
+  async deleteSchedule(scheduleId: string, caregiverId: string): Promise<void> {
+    const schedule = await medicationRepository.findScheduleById(scheduleId);
+    if (!schedule) throw ApiError.notFound('Medication schedule');
+    if (schedule.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this schedule');
+    await medicationRepository.deactivateSchedule(scheduleId);
+  },
+  async getSchedulesForPatient(patientId: string, caregiverId: string): Promise<MedicationSchedule[]> {
+    await patientService.assertCaregiverOwnsPatient(patientId, caregiverId);
+    return medicationRepository.findSchedulesByPatient(patientId);
+  }
+};
+</file>
+
+<file path="src/modules/ner/groqNer.service.ts">
+import Groq from 'groq-sdk';
+import { z } from 'zod';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import { ApiError } from '../../utils/apiError';
+import { NER_EXTRACTION_PROMPT } from './ner.prompts';
+import type { NerResult } from './ner.types';
+
+const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+const MedicineSchema = z.object({
+  drug_name: z.string().min(1),
+  dosage: z.string().nullable().default(null),
+  frequency: z.string().nullable().default(null),
+  route: z.string().nullable().default(null),
+  low_confidence: z.boolean().default(false)
+});
+
+export const groqNerService = {
+  async extractMedicines(ocrText: string): Promise<NerResult> {
+    const completion = await groq.chat.completions.create({
+      model: 'llama3-70b-8192',
+      temperature: 0,
+      max_tokens: 2000,
+      messages: [
+        { role: 'system', content: NER_EXTRACTION_PROMPT },
+        { role: 'user', content: `OCR Text:
+${ocrText}` }
+      ]
+    });
+    const raw = completion.choices[0]?.message?.content ?? '[]';
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      const medicines = z.array(MedicineSchema).parse(parsed);
+      return { medicines, raw_response: raw };
+    } catch (error) {
+      logger.error('[NER] Failed to parse Groq response', { raw, error: error instanceof Error ? error.message : String(error) });
+      throw ApiError.internal('Failed to parse medicine extraction result');
+    }
+  }
+};
+</file>
+
+<file path="src/modules/ner/ner.prompts.ts">
+export const NER_EXTRACTION_PROMPT = `You are a medical entity extractor specialising in Indian prescription handwriting.
+
+From the following OCR text of a handwritten Indian prescription, extract ALL medicines mentioned.
+
+For each medicine, extract:
+- drug_name: The name of the drug (normalise brand names to their common form where possible)
+- dosage: The dose amount and unit (e.g., "500mg", "10mg")
+- frequency: How often to take it (e.g., "twice daily", "OD", "BD", "TDS", "SOS")
+- route: How to take it (e.g., "oral", "topical") - null if not specified
+- low_confidence: true if you are uncertain about ANY field for this medicine
+
+Return ONLY a valid JSON array of medicine objects. No preamble, no explanation.
+If confidence in any field is below 80%, mark low_confidence as true for that entire medicine.
+Do NOT infer or guess - extract only what is explicitly present in the text.
+If no medicines are found, return an empty array [].
+
+Example output format:
+[{"drug_name":"Metoprolol","dosage":"25mg","frequency":"once daily","route":"oral","low_confidence":false}]`;
+</file>
+
+<file path="src/modules/ner/ner.types.ts">
+export interface ExtractedMedicine {
+  drug_name: string;
+  dosage: string | null;
+  frequency: string | null;
+  route: string | null;
+  low_confidence: boolean;
+}
+
+export interface NerResult {
+  medicines: ExtractedMedicine[];
+  raw_response: string;
+}
+</file>
+
+<file path="src/modules/news/news.service.ts">
+import { startOfDay } from 'date-fns';
+import { supabase } from '../../config/supabase';
+import type { NewsCache } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { fetchIndianNews } from './newsapi.client';
+
+export const newsService = {
+  async refreshNews(): Promise<void> {
+    const today = startOfDay(new Date()).toISOString();
+    await supabase.from('news_cache').delete().gte('fetched_at', today);
+    const articles = await fetchIndianNews();
+    if (articles.length === 0) return;
+    const { error } = await supabase.from('news_cache').insert(articles.map((article) => ({ headline: article.title, summary: article.description, source: article.source.name })));
+    if (error) throw ApiError.internal('Failed to cache news');
+  },
+  async getLatestNews(limit = 5): Promise<NewsCache[]> {
+    const today = startOfDay(new Date()).toISOString();
+    let { data, error } = await supabase.from('news_cache').select('*').gte('fetched_at', today).order('fetched_at', { ascending: false }).limit(limit);
+    if (error) throw ApiError.internal('Failed to load news');
+    if (!data || data.length === 0) {
+      await this.refreshNews();
+      const result = await supabase.from('news_cache').select('*').gte('fetched_at', today).order('fetched_at', { ascending: false }).limit(limit);
+      data = result.data;
+      error = result.error;
+    }
+    if (error) throw ApiError.internal('Failed to load news');
+    return data ?? [];
+  }
+};
+</file>
+
+<file path="src/modules/news/news.types.ts">
+export interface NewsArticle {
+  title: string;
+  description: string | null;
+  source: { name: string };
+}
+
+export interface NewsApiResponse {
+  articles: NewsArticle[];
+}
+</file>
+
+<file path="src/modules/news/newsapi.client.ts">
+import axios from 'axios';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import type { NewsApiResponse, NewsArticle } from './news.types';
+
+export async function fetchIndianNews(): Promise<NewsArticle[]> {
+  try {
+    const { data } = await axios.get<NewsApiResponse>(`https://newsapi.org/v2/top-headlines?country=in&pageSize=10&apiKey=${env.NEWS_API_KEY}`, { timeout: 10000 });
+    return data.articles ?? [];
+  } catch (error) {
+    logger.warn('[NEWS] Fetch failed', { error: error instanceof Error ? error.message : String(error) });
+    return [];
+  }
+}
+</file>
+
+<file path="src/modules/ocr/googleVision.client.ts">
+import vision from '@google-cloud/vision';
+import { logger } from '../../config/logger';
+import type { OcrResult } from './ocr.types';
+
+const client = new vision.ImageAnnotatorClient();
+
+export async function extractTextFromImage(filePath: string): Promise<OcrResult> {
+  try {
+    const [result] = await client.textDetection(filePath);
+    const annotation = result.fullTextAnnotation;
+    const rawText = annotation?.text ?? result.textAnnotations?.[0]?.description ?? '';
+    const confidences = annotation?.pages?.flatMap((page) => page.blocks?.map((block) => block.confidence ?? 0).filter((confidence) => confidence > 0) ?? []) ?? [];
+    const confidence = confidences.length ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : null;
+    return { rawText, confidence };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error('[OCR] Google Vision failed', { filePath, error: message });
+    return { rawText: '', confidence: null, error: message };
+  }
+}
+</file>
+
+<file path="src/modules/ocr/ocr.service.ts">
+import { supabase } from '../../config/supabase';
+import { ApiError } from '../../utils/apiError';
+import { groqNerService } from '../ner/groqNer.service';
+import type { NerResult } from '../ner/ner.types';
+import { extractTextFromImage } from './googleVision.client';
+import type { OcrResult } from './ocr.types';
+
+export const ocrService = {
+  async processPrescritionImage(filePath: string, _mimeType: string): Promise<{ ocrResult: OcrResult; nerResult: NerResult }> {
+    const ocrResult = await extractTextFromImage(filePath);
+    if (!ocrResult.rawText.trim()) throw ApiError.badRequest('Could not read text from image. Please upload a clearer photo.');
+    const nerResult = await groqNerService.extractMedicines(ocrResult.rawText);
+    return { ocrResult, nerResult };
+  },
+  async saveOcrResult(prescriptionId: string, rawText: string): Promise<void> {
+    const { error } = await supabase.from('prescriptions').update({ raw_ocr_text: rawText }).eq('id', prescriptionId);
+    if (error) throw ApiError.internal('Failed to save OCR result');
+  }
+};
+</file>
+
+<file path="src/modules/ocr/ocr.types.ts">
+export interface OcrResult {
+  rawText: string;
+  confidence: number | null;
+  error?: string;
+}
+
+export interface OcrRequest {
+  filePath: string;
+  mimeType: string;
+}
+</file>
+
+<file path="src/modules/onboarding/onboarding.controller.ts">
+import type { Request, Response } from 'express';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { onboardingService } from './onboarding.service';
+import type { OnboardingInput } from './onboarding.types';
+
+export const onboardingController = {
+  createPatient: asyncHandler(async (req: Request<object, object, OnboardingInput>, res: Response) => {
+    const patient = await onboardingService.createPatientWithContacts(req.user!.id, req.body);
+    res.status(201).json(successResponse(patient, 'Patient created'));
+  }),
+  getPatient: asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
+    const patient = await onboardingService.getPatient(req.params.id, req.user!.id);
+    res.json(successResponse(patient));
+  }),
+  listPatients: asyncHandler(async (req: Request, res: Response) => {
+    const patients = await onboardingService.listPatients(req.user!.id);
+    res.json(successResponse(patients));
+  }),
+  updatePatient: asyncHandler(async (req: Request<{ id: string }, object, Partial<OnboardingInput>>, res: Response) => {
+    const patient = await onboardingService.updatePatient(req.params.id, req.user!.id, req.body);
+    res.json(successResponse(patient, 'Patient updated'));
+  })
+};
+</file>
+
+<file path="src/modules/onboarding/onboarding.service.ts">
+import { supabase } from '../../config/supabase';
+import type { Patient } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { toE164India } from '../../utils/phone';
+import { patientRepository } from '../patients/patient.repository';
+import { patientService } from '../patients/patient.service';
+import type { OnboardingInput } from './onboarding.types';
+
+export const onboardingService = {
+  async createPatientWithContacts(caregiverId: string, input: OnboardingInput): Promise<Patient> {
+    const patient = await patientRepository.create({
+      caregiver_id: caregiverId,
+      full_name: input.full_name,
+      phone: toE164India(input.phone),
+      date_of_birth: input.date_of_birth ?? null,
+      language_preference: input.language_preference,
+      companion_tone: input.companion_tone
+    });
+    try {
+      for (const contact of input.contacts) {
+        await patientRepository.createContact({
+          patient_id: patient.id,
+          name: contact.name,
+          phone: toE164India(contact.phone),
+          relationship: contact.relationship,
+          can_receive_escalation_sms: contact.can_receive_escalation_sms ?? true
+        });
+      }
+      return patient;
+    } catch (error) {
+      await supabase.from('patients').delete().eq('id', patient.id);
+      throw error;
+    }
+  },
+  getPatient(patientId: string, caregiverId: string) {
+    return patientService.getPatient(patientId, caregiverId);
+  },
+  listPatients(caregiverId: string) {
+    return patientRepository.findByCaregiverId(caregiverId);
+  },
+  async updatePatient(patientId: string, caregiverId: string, updates: Partial<OnboardingInput>): Promise<Patient> {
+    await patientService.assertCaregiverOwnsPatient(patientId, caregiverId);
+    const allowed: Partial<Patient> = {};
+    if (updates.full_name !== undefined) allowed.full_name = updates.full_name;
+    if (updates.phone !== undefined) allowed.phone = toE164India(updates.phone);
+    if (updates.date_of_birth !== undefined) allowed.date_of_birth = updates.date_of_birth;
+    if (updates.language_preference !== undefined) allowed.language_preference = updates.language_preference;
+    if (updates.companion_tone !== undefined) allowed.companion_tone = updates.companion_tone;
+    if (Object.keys(allowed).length === 0) throw ApiError.badRequest('No patient fields supplied');
+    return patientRepository.update(patientId, allowed);
+  }
+};
+</file>
+
+<file path="src/modules/onboarding/onboarding.types.ts">
+import { z } from 'zod';
+
+export const CreatePatientSchema = z.object({
+  full_name: z.string().min(2),
+  phone: z.string().min(10),
+  date_of_birth: z.string().optional(),
+  language_preference: z.enum(['hi', 'en']).default('hi'),
+  companion_tone: z.enum(['warm', 'formal', 'playful']).default('warm')
+});
+
+export const CreateContactSchema = z.object({
+  name: z.string().min(2),
+  phone: z.string().min(10),
+  relationship: z.string().min(2),
+  can_receive_escalation_sms: z.boolean().optional().default(true)
+});
+
+export const OnboardingSchema = CreatePatientSchema.extend({
+  contacts: z.array(CreateContactSchema).min(1).max(5)
+});
+
+export type CreatePatientInput = z.infer<typeof CreatePatientSchema>;
+export type CreateContactInput = z.infer<typeof CreateContactSchema>;
+export type OnboardingInput = z.infer<typeof OnboardingSchema>;
+</file>
+
+<file path="src/modules/onboarding/onboarding.validator.ts">
+export { CreateContactSchema, CreatePatientSchema, OnboardingSchema } from './onboarding.types';
+</file>
+
+<file path="src/modules/patients/patient.repository.ts">
+import { supabase } from '../../config/supabase';
+import type { ApprovedContact, Patient } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import type { PatientWithContacts } from './patient.types';
+
+export const patientRepository = {
+  async findById(id: string): Promise<Patient | null> {
+    const { data, error } = await supabase.from('patients').select('*').eq('id', id).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load patient');
+    return data;
+  },
+  async findByIdWithContacts(id: string): Promise<PatientWithContacts | null> {
+    const { data, error } = await supabase.from('patients').select('*, approved_contacts(*)').eq('id', id).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load patient contacts');
+    return data as PatientWithContacts | null;
+  },
+  async findByCaregiverId(caregiverId: string): Promise<Patient[]> {
+    const { data, error } = await supabase.from('patients').select('*').eq('caregiver_id', caregiverId).order('created_at', { ascending: false });
+    if (error) throw ApiError.internal('Failed to list patients');
+    return data ?? [];
+  },
+  async create(data: Omit<Patient, 'id' | 'created_at' | 'updated_at'>): Promise<Patient> {
+    const result = await supabase.from('patients').insert(data).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to create patient');
+    return result.data;
+  },
+  async update(id: string, data: Partial<Patient>): Promise<Patient> {
+    const result = await supabase.from('patients').update(data).eq('id', id).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to update patient');
+    return result.data;
+  },
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from('patients').delete().eq('id', id);
+    if (error) throw ApiError.internal('Failed to delete patient');
+  },
+  async createContact(data: Omit<ApprovedContact, 'id' | 'created_at'>): Promise<ApprovedContact> {
+    const result = await supabase.from('approved_contacts').insert(data).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to create approved contact');
+    return result.data;
+  },
+  async findContactsByPatientId(patientId: string): Promise<ApprovedContact[]> {
+    const { data, error } = await supabase.from('approved_contacts').select('*').eq('patient_id', patientId).order('created_at');
+    if (error) throw ApiError.internal('Failed to list approved contacts');
+    return data ?? [];
+  },
+  async findEscalationContacts(patientId: string): Promise<ApprovedContact[]> {
+    const { data, error } = await supabase.from('approved_contacts').select('*').eq('patient_id', patientId).eq('can_receive_escalation_sms', true);
+    if (error) throw ApiError.internal('Failed to list escalation contacts');
+    return data ?? [];
+  }
+};
+</file>
+
+<file path="src/modules/patients/patient.service.ts">
+import type { ApprovedContact, Patient } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { patientRepository } from './patient.repository';
+import type { PatientWithContacts } from './patient.types';
+
+export const patientService = {
+  async assertCaregiverOwnsPatient(patientId: string, caregiverId: string): Promise<void> {
+    const patient = await patientRepository.findById(patientId);
+    if (!patient) throw ApiError.notFound('Patient');
+    if (patient.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this patient');
+  },
+  async getPatient(patientId: string, caregiverId: string): Promise<PatientWithContacts> {
+    await this.assertCaregiverOwnsPatient(patientId, caregiverId);
+    const patient = await patientRepository.findByIdWithContacts(patientId);
+    if (!patient) throw ApiError.notFound('Patient');
+    return patient;
+  },
+  async listPatients(caregiverId: string): Promise<Patient[]> {
+    return patientRepository.findByCaregiverId(caregiverId);
+  },
+  async getContacts(patientId: string, caregiverId: string): Promise<ApprovedContact[]> {
+    await this.assertCaregiverOwnsPatient(patientId, caregiverId);
+    return patientRepository.findContactsByPatientId(patientId);
+  }
+};
+</file>
+
+<file path="src/modules/patients/patient.types.ts">
+import type { ApprovedContact, Patient } from '../../types/database';
+
+export type PatientWithContacts = Patient & { approved_contacts: ApprovedContact[] };
+export type PatientSummary = Pick<Patient, 'id' | 'full_name' | 'phone' | 'language_preference' | 'companion_tone'>;
+</file>
+
+<file path="src/modules/prescriptions/prescription.controller.ts">
+import type { Request, Response } from 'express';
+import { ApiError } from '../../utils/apiError';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import type { UploadedFile } from '../../middleware/upload.middleware';
+import { prescriptionService } from './prescription.service';
+import type { VerifyPrescriptionInput } from './prescription.types';
+
+export const prescriptionController = {
+  upload: asyncHandler(async (req: Request<object, object, { patientId?: string }, { patientId?: string }>, res: Response) => {
+    const patientId = req.body.patientId ?? req.query.patientId;
+    if (!patientId) throw ApiError.badRequest('patientId is required');
+    const result = await prescriptionService.uploadAndProcess(req.file as UploadedFile, patientId, req.user!.id);
+    res.status(201).json(successResponse(result, 'Prescription uploaded. Caregiver verification is required before safety warnings activate.'));
+  }),
+  verify: asyncHandler(async (req: Request<{ id: string }, object, VerifyPrescriptionInput>, res: Response) => {
+    const prescription = await prescriptionService.verifyPrescription(req.params.id, req.body, req.user!.id);
+    res.json(successResponse(prescription, 'Prescription verified'));
+  }),
+  getOne: asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
+    const prescription = await prescriptionService.getPrescription(req.params.id, req.user!.id);
+    res.json(successResponse(prescription));
+  }),
+  list: asyncHandler(async (req: Request<object, object, object, { patientId?: string; demo?: string }>, res: Response) => {
+    if (!req.query.patientId) throw ApiError.badRequest('patientId query parameter is required');
+    const prescriptions = await prescriptionService.listPrescriptions(req.query.patientId, req.user?.id ?? '', req.query.demo === 'true');
+    res.json(successResponse(prescriptions));
+  })
+};
+</file>
+
+<file path="src/modules/prescriptions/prescription.repository.ts">
+import { supabase } from '../../config/supabase';
+import type { Medicine, Prescription } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { isoNow } from '../../utils/dateTime';
+import type { PrescriptionWithMedicines } from './prescription.types';
+
+type PrescriptionCreate = Omit<Prescription, 'id' | 'created_at'>;
+
+export const prescriptionRepository = {
+  async create(data: PrescriptionCreate): Promise<Prescription> {
+    const result = await supabase.from('prescriptions').insert(data).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to create prescription');
+    return result.data;
+  },
+  async findById(id: string): Promise<Prescription | null> {
+    const { data, error } = await supabase.from('prescriptions').select('*').eq('id', id).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load prescription');
+    return data;
+  },
+  async findByIdWithMedicines(id: string): Promise<PrescriptionWithMedicines | null> {
+    const { data, error } = await supabase.from('prescriptions').select('*, medicines(*)').eq('id', id).maybeSingle();
+    if (error) throw ApiError.internal('Failed to load prescription medicines');
+    return data as PrescriptionWithMedicines | null;
+  },
+  async findByPatientId(patientId: string): Promise<Prescription[]> {
+    const { data, error } = await supabase.from('prescriptions').select('*').eq('patient_id', patientId).order('created_at', { ascending: false });
+    if (error) throw ApiError.internal('Failed to list prescriptions');
+    return data ?? [];
+  },
+  async update(id: string, data: Partial<Prescription>): Promise<Prescription> {
+    const result = await supabase.from('prescriptions').update(data).eq('id', id).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to update prescription');
+    return result.data;
+  },
+  async createMedicines(medicines: Omit<Medicine, 'id' | 'created_at'>[]): Promise<Medicine[]> {
+    if (medicines.length === 0) return [];
+    const { data, error } = await supabase.from('medicines').insert(medicines).select('*');
+    if (error || !data) throw ApiError.internal('Failed to create medicines');
+    return data;
+  },
+  async markVerified(id: string, verifiedBy: string, medicines: Omit<Medicine, 'id' | 'created_at'>[]): Promise<PrescriptionWithMedicines> {
+    await supabase.from('medicines').delete().eq('prescription_id', id);
+    const prescription = await this.update(id, { verified: true, verified_at: isoNow(), verified_by: verifiedBy });
+    const savedMedicines = await this.createMedicines(medicines);
+    return { ...prescription, medicines: savedMedicines };
+  }
+};
+</file>
+
+<file path="src/modules/prescriptions/prescription.service.ts">
+import type { Prescription } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import type { UploadedFile } from '../../middleware/upload.middleware';
+import { ocrService } from '../ocr/ocr.service';
+import { patientService } from '../patients/patient.service';
+import type { NerResult } from '../ner/ner.types';
+import { DEMO_PRESCRIPTIONS } from '../../data/demoPrescriptions';
+import { prescriptionRepository } from './prescription.repository';
+import type { PrescriptionWithMedicines, VerifyPrescriptionInput } from './prescription.types';
+
+export const prescriptionService = {
+  async uploadAndProcess(file: UploadedFile, patientId: string, caregiverId: string): Promise<{ prescription: Prescription; nerResult: NerResult; ocrText: string }> {
+    if (!file) throw ApiError.badRequest('Prescription file is required');
+    await patientService.assertCaregiverOwnsPatient(patientId, caregiverId);
+    const prescription = await prescriptionRepository.create({ patient_id: patientId, caregiver_id: caregiverId, image_url: file.publicPath, raw_ocr_text: null, verified: false, verified_at: null, verified_by: null });
+    const { ocrResult, nerResult } = await ocrService.processPrescritionImage(file.path, file.mimetype);
+    await ocrService.saveOcrResult(prescription.id, ocrResult.rawText);
+    return { prescription: { ...prescription, raw_ocr_text: ocrResult.rawText }, nerResult, ocrText: ocrResult.rawText };
+  },
+  async verifyPrescription(prescriptionId: string, input: VerifyPrescriptionInput, caregiverId: string): Promise<PrescriptionWithMedicines> {
+    const prescription = await prescriptionRepository.findById(prescriptionId);
+    if (!prescription) throw ApiError.notFound('Prescription');
+    if (prescription.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this prescription');
+    if (prescription.verified) throw ApiError.conflict('Prescription is already verified');
+    const medicines = input.medicines.map((medicine) => ({ prescription_id: prescriptionId, drug_name: medicine.drug_name, dosage: medicine.dosage ?? null, frequency: medicine.frequency ?? null, route: medicine.route ?? null, low_confidence: false }));
+    return prescriptionRepository.markVerified(prescriptionId, caregiverId, medicines);
+  },
+  async getPrescription(id: string, caregiverId: string): Promise<PrescriptionWithMedicines> {
+    const prescription = await prescriptionRepository.findByIdWithMedicines(id);
+    if (!prescription) throw ApiError.notFound('Prescription');
+    if (prescription.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this prescription');
+    return prescription;
+  },
+  async listPrescriptions(patientId: string, caregiverId: string, demo = false): Promise<Prescription[] | typeof DEMO_PRESCRIPTIONS> {
+    if (demo || patientId === 'demo-patient-uuid') return DEMO_PRESCRIPTIONS;
+    await patientService.assertCaregiverOwnsPatient(patientId, caregiverId);
+    return prescriptionRepository.findByPatientId(patientId);
+  }
+};
+</file>
+
+<file path="src/modules/prescriptions/prescription.types.ts">
+import { z } from 'zod';
+import type { Medicine, Prescription } from '../../types/database';
+
+export type PrescriptionWithMedicines = Prescription & { medicines: Medicine[] };
+
+export const VerifyPrescriptionSchema = z.object({
+  medicines: z.array(z.object({
+    drug_name: z.string().min(1),
+    dosage: z.string().optional(),
+    frequency: z.string().optional(),
+    route: z.string().optional()
+  })).min(1)
+});
+
+export type VerifyPrescriptionInput = z.infer<typeof VerifyPrescriptionSchema>;
+</file>
+
+<file path="src/modules/prescriptions/prescription.validator.ts">
+export { VerifyPrescriptionSchema } from './prescription.types';
+</file>
+
+<file path="src/modules/safety/interaction.repository.ts">
+import { supabase } from '../../config/supabase';
+import type { DrugInteraction } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { INDIAN_DRUG_SUGGESTIONS } from '../../data/drugSuggestions';
+
+type InteractionInsert = Omit<DrugInteraction, 'id' | 'created_at'>;
+
+function variants(name: string): string[] {
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+  const mapped = INDIAN_DRUG_SUGGESTIONS.find((suggestion) => suggestion.toLowerCase() === lower);
+  const stripped = trimmed.replace(/\s+(tablet|tab|capsule|cap|syrup)$/i, '');
+  return Array.from(new Set([trimmed, stripped, mapped].filter((value): value is string => Boolean(value))));
+}
+
+export const interactionRepository = {
+  async findInteractionsByDrugNames(drugNames: string[]): Promise<DrugInteraction[]> {
+    if (drugNames.length === 0) return [];
+    const searchNames = Array.from(new Set(drugNames.flatMap(variants)));
+    const { data, error } = await supabase.from('drug_interactions').select('*');
+    if (error) throw ApiError.internal('Failed to lookup drug interactions');
+    const lowerNames = searchNames.map((name) => name.toLowerCase());
+    return (data ?? []).filter((row) => {
+      const canonical = row.drug_name.toLowerCase();
+      const aliases = row.drug_aliases.map((alias: string) => alias.toLowerCase());
+      return lowerNames.some((name) => canonical.includes(name) || name.includes(canonical) || aliases.some((alias: string) => alias.includes(name) || name.includes(alias)));
+    });
+  },
+  async findAllDrugs(): Promise<DrugInteraction[]> {
+    const { data, error } = await supabase.from('drug_interactions').select('*').order('drug_name');
+    if (error) throw ApiError.internal('Failed to load drug interactions');
+    return data ?? [];
+  },
+  async upsertInteraction(data: InteractionInsert): Promise<DrugInteraction> {
+    const result = await supabase.from('drug_interactions').upsert(data, { onConflict: 'drug_name,interaction_type,interacting_substance' }).select('*').single();
+    if (result.error || !result.data) throw ApiError.internal('Failed to upsert drug interaction');
+    return result.data;
+  }
+};
+</file>
+
+<file path="src/modules/safety/openfda.client.ts">
+import axios, { AxiosError } from 'axios';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+import type { DrugInteraction } from '../../types/database';
+
+interface OpenFdaLabel {
+  openfda?: {
+    brand_name?: string[];
+    generic_name?: string[];
+    substance_name?: string[];
+  };
+  drug_interactions?: string[];
+  warnings?: string[];
+}
+
+interface OpenFdaResponse {
+  results?: OpenFdaLabel[];
+}
+
+function unique(values: Array<string | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim())));
+}
+
+function severityFromText(text: string): DrugInteraction['severity'] {
+  const lower = text.toLowerCase();
+  if (/(contraindicat|life-threatening|fatal|severe|serious|avoid)/.test(lower)) return 'high';
+  if (/(caution|monitor|may|increase|decrease|risk|interaction)/.test(lower)) return 'moderate';
+  return 'low';
+}
+
+function stableId(source: string, drugName: string, description: string): string {
+  const normalized = `${source}-${drugName}-${description}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return normalized.slice(0, 120);
+}
+
+export function mapOpenFdaLabelToInteractions(drugName: string, label: OpenFdaLabel): DrugInteraction[] {
+  const interactionTexts = unique(label.drug_interactions ?? []);
+  const aliases = unique([
+    ...(label.openfda?.brand_name ?? []),
+    ...(label.openfda?.generic_name ?? []),
+    ...(label.openfda?.substance_name ?? [])
+  ]);
+
+  return interactionTexts.map((description) => ({
+    id: stableId('openfda', drugName, description),
+    drug_name: drugName,
+    drug_aliases: aliases.length > 0 ? aliases : [drugName],
+    interaction_type: 'drug',
+    interacting_substance: 'OpenFDA labeled interaction',
+    severity: severityFromText(description),
+    description_en: description,
+    description_hi: null,
+    source: 'openfda',
+    created_at: new Date().toISOString()
+  }));
+}
+
+export const openFdaClient = {
+  async fetchInteractions(drugName: string): Promise<DrugInteraction[]> {
+    const params = new URLSearchParams({
+      search: `openfda.brand_name:"${drugName}" OR openfda.generic_name:"${drugName}" OR openfda.substance_name:"${drugName}"`,
+      limit: '3'
+    });
+    if (env.OPENFDA_API_KEY) params.set('api_key', env.OPENFDA_API_KEY);
+
+    try {
+      const { data } = await axios.get<OpenFdaResponse>(`${env.OPENFDA_LABEL_URL}?${params.toString()}`, {
+        timeout: env.MEDICAL_FALLBACK_TIMEOUT_MS
+      });
+      return (data.results ?? []).flatMap((label) => mapOpenFdaLabelToInteractions(drugName, label));
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) return [];
+      logger.warn('[OPENFDA] Fallback lookup failed', {
+        drugName,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  }
+};
+</file>
+
+<file path="src/modules/safety/ragSafety.prompts.ts">
+export const RAG_SAFETY_PROMPT = `You are a medication safety assistant for elderly patients in India.
+
+Using ONLY the following verified drug interaction records retrieved from the database, explain in simple, clear language what foods and drug combinations this patient should avoid during their treatment.
+
+Rules:
+1. Only use information from the provided database records. Do NOT add any information not present in the retrieved records.
+2. Group warnings by severity: HIGH RISK first, then MODERATE, then LOW.
+3. Use simple language suitable for a non-medical family caregiver.
+4. Include both the English and Hindi name of foods where relevant.
+5. If no interactions are found, say: "No known food or drug interactions found for this prescription in our database."
+6. Never tell the patient what dose to take or when to see a doctor. Only warn about what to avoid.
+7. Format as a plain numbered list with severity labels: HIGH, MODERATE, LOW.
+
+Database records:
+{{INTERACTION_RECORDS}}`;
+</file>
+
+<file path="src/modules/safety/rxnorm.client.ts">
+import axios, { AxiosError } from 'axios';
+import { env } from '../../config/env';
+import { logger } from '../../config/logger';
+
+interface RxNormRxcuiResponse {
+  idGroup?: {
+    rxnormId?: string[];
+  };
+}
+
+interface RxNormConceptProperty {
+  name?: string;
+}
+
+interface RxNormConceptGroup {
+  tty?: string;
+  conceptProperties?: RxNormConceptProperty[];
+}
+
+interface RxNormRelatedResponse {
+  allRelatedGroup?: {
+    conceptGroup?: RxNormConceptGroup[];
+  };
+}
+
+function unique(values: Array<string | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim())));
+}
+
+export function extractRxNormNames(response: RxNormRelatedResponse): string[] {
+  const preferredTypes = new Set(['BN', 'IN', 'MIN', 'PIN', 'SCD', 'SBD', 'GPCK', 'BPCK']);
+  const names = response.allRelatedGroup?.conceptGroup
+    ?.filter((group) => !group.tty || preferredTypes.has(group.tty))
+    .flatMap((group) => group.conceptProperties?.map((property) => property.name) ?? []) ?? [];
+  return unique(names);
+}
+
+export const rxNormClient = {
+  async resolveRxCui(drugName: string): Promise<string | null> {
+    try {
+      const { data } = await axios.get<RxNormRxcuiResponse>(`${env.RXNORM_BASE_URL}/rxcui.json`, {
+        params: { name: drugName },
+        timeout: env.MEDICAL_FALLBACK_TIMEOUT_MS
+      });
+      return data.idGroup?.rxnormId?.[0] ?? null;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) return null;
+      logger.warn('[RXNORM] RxCUI lookup failed', {
+        drugName,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  },
+
+  async fetchNormalizedNames(drugName: string): Promise<string[]> {
+    const rxcui = await this.resolveRxCui(drugName);
+    if (!rxcui) return [];
+
+    try {
+      const { data } = await axios.get<RxNormRelatedResponse>(`${env.RXNORM_BASE_URL}/rxcui/${rxcui}/allrelated.json`, {
+        timeout: env.MEDICAL_FALLBACK_TIMEOUT_MS
+      });
+      return extractRxNormNames(data);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) return [];
+      logger.warn('[RXNORM] Related names lookup failed', {
+        drugName,
+        rxcui,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  }
+};
+</file>
+
+<file path="src/modules/safety/safety.controller.ts">
+import { z } from 'zod';
+import type { Request, Response } from 'express';
+import { successResponse } from '../../utils/apiResponse';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { safetyService } from './safety.service';
+
+const SafetyCheckSchema = z.object({ drug_names: z.array(z.string().min(1)).min(1) });
+
+export const safetyController = {
+  getWarnings: asyncHandler(async (req: Request<{ prescriptionId?: string; id?: string }>, res: Response) => {
+    const prescriptionId = req.params.prescriptionId ?? req.params.id!;
+    const report = req.query.demo === 'true' || prescriptionId.startsWith('demo-') ? await safetyService.demoReport(prescriptionId) : await safetyService.getSafetyReportForPrescription(prescriptionId, req.user!.id);
+    res.json(successResponse(report));
+  }),
+  checkDrugs: asyncHandler(async (req: Request, res: Response) => {
+    const input = SafetyCheckSchema.parse(req.body);
+    const report = await safetyService.checkDrugs(input.drug_names);
+    res.json(successResponse(report));
+  })
+};
+</file>
+
+<file path="src/modules/safety/safety.service.ts">
+import Groq from 'groq-sdk';
+import { env } from '../../config/env';
+import type { DrugInteraction } from '../../types/database';
+import { ApiError } from '../../utils/apiError';
+import { DEMO_PRESCRIPTIONS } from '../../data/demoPrescriptions';
+import { INDIAN_DRUG_INTERACTIONS } from '../../data/indianDrugSeed';
+import { prescriptionRepository } from '../prescriptions/prescription.repository';
+import { interactionRepository } from './interaction.repository';
+import { openFdaClient } from './openfda.client';
+import { RAG_SAFETY_PROMPT } from './ragSafety.prompts';
+import { rxNormClient } from './rxnorm.client';
+import type { InteractionWarning, SafetyReport } from './safety.types';
+
+const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+
+function toWarnings(interactions: DrugInteraction[]): InteractionWarning[] {
+  return interactions.map((item) => ({ drug_name: item.drug_name, interaction_type: item.interaction_type, interacting_substance: item.interacting_substance, severity: item.severity, description_en: item.description_en, description_hi: item.description_hi, source: item.source }));
+}
+
+function interactionKey(interaction: DrugInteraction): string {
+  return [
+    interaction.source,
+    interaction.drug_name.toLowerCase(),
+    interaction.interaction_type,
+    interaction.interacting_substance.toLowerCase(),
+    interaction.description_en.toLowerCase()
+  ].join('|');
+}
+
+function interactionMatchesDrug(interaction: DrugInteraction, drugName: string): boolean {
+  const lower = drugName.toLowerCase();
+  return interaction.drug_name.toLowerCase() === lower || interaction.drug_aliases.some((alias) => alias.toLowerCase() === lower);
+}
+
+async function resolveInteractionsWithFallbacks(drugNames: string[]): Promise<DrugInteraction[]> {
+  const resolved = new Map<string, DrugInteraction>();
+  const curated = await interactionRepository.findInteractionsByDrugNames(drugNames);
+  curated.forEach((interaction) => resolved.set(interactionKey(interaction), interaction));
+
+  for (const drugName of drugNames) {
+    const hasCuratedMatch = curated.some((interaction) => interactionMatchesDrug(interaction, drugName));
+    if (hasCuratedMatch) continue;
+
+    const rxNormNames = await rxNormClient.fetchNormalizedNames(drugName);
+    const normalizedCurated = rxNormNames.length > 0
+      ? await interactionRepository.findInteractionsByDrugNames(rxNormNames)
+      : [];
+    normalizedCurated.forEach((interaction) => resolved.set(interactionKey(interaction), interaction));
+
+    if (normalizedCurated.length > 0) continue;
+
+    const openFdaNames = [drugName, ...rxNormNames].filter((value, index, array) => array.indexOf(value) === index);
+    for (const openFdaName of openFdaNames) {
+      const fallbackInteractions = await openFdaClient.fetchInteractions(openFdaName);
+      fallbackInteractions.forEach((interaction) => resolved.set(interactionKey(interaction), interaction));
+      if (fallbackInteractions.length > 0) break;
+    }
+  }
+
+  return Array.from(resolved.values());
+}
+
+export const safetyService = {
+  async generateSafetyReport(prescriptionId: string): Promise<SafetyReport> {
+    const prescription = await prescriptionRepository.findByIdWithMedicines(prescriptionId);
+    if (!prescription) throw ApiError.notFound('Prescription');
+    if (!prescription.verified) throw ApiError.forbidden('Caregiver verification is required before safety warnings can be generated');
+    const drugNames = prescription.medicines.map((medicine) => medicine.drug_name);
+    const interactions = await resolveInteractionsWithFallbacks(drugNames);
+    const formatted = await this.formatInteractionWarnings(interactions, drugNames);
+    return { prescription_id: prescriptionId, warnings: toWarnings(interactions), formatted_summary: formatted };
+  },
+  async formatInteractionWarnings(interactions: DrugInteraction[], _drugNames: string[]): Promise<string> {
+    if (interactions.length === 0) return 'No known food or drug interactions found for this prescription in our database.';
+    const prompt = RAG_SAFETY_PROMPT.replace('{{INTERACTION_RECORDS}}', JSON.stringify(interactions, null, 2));
+    const completion = await groq.chat.completions.create({ model: 'llama3-70b-8192', temperature: 0, max_tokens: 1200, messages: [{ role: 'system', content: prompt }, { role: 'user', content: 'Format these database warnings for the caregiver.' }] });
+    return completion.choices[0]?.message?.content ?? interactions.map((item, index) => `${index + 1}. ${item.severity.toUpperCase()}: Avoid ${item.interacting_substance} with ${item.drug_name}. ${item.description_en}`).join('\\n');
+  },
+  async getSafetyReportForPrescription(prescriptionId: string, caregiverId: string): Promise<SafetyReport> {
+    const prescription = await prescriptionRepository.findById(prescriptionId);
+    if (!prescription) throw ApiError.notFound('Prescription');
+    if (prescription.caregiver_id !== caregiverId) throw ApiError.forbidden('You do not have access to this prescription');
+    return this.generateSafetyReport(prescriptionId);
+  },
+  async checkDrugs(drugNames: string[]): Promise<SafetyReport> {
+    const interactions = await resolveInteractionsWithFallbacks(drugNames);
+    return { prescription_id: 'adhoc', warnings: toWarnings(interactions), formatted_summary: await this.formatInteractionWarnings(interactions, drugNames) };
+  },
+  async demoReport(prescriptionId: string): Promise<SafetyReport> {
+    const demo = DEMO_PRESCRIPTIONS.find((item) => item.id === prescriptionId);
+    const drugNames = demo ? [demo.drug_name] : DEMO_PRESCRIPTIONS.map((item) => item.drug_name);
+    const rows = INDIAN_DRUG_INTERACTIONS.filter((row) => drugNames.some((name) => row.drug_name.toLowerCase() === name.toLowerCase() || row.drug_aliases.some((alias) => alias.toLowerCase() === name.toLowerCase())));
+    const interactions = rows.map((row, index) => ({ id: `demo-${index}`, created_at: new Date().toISOString(), ...row }));
+    return { prescription_id: prescriptionId, warnings: toWarnings(interactions), formatted_summary: await this.formatInteractionWarnings(interactions, drugNames) };
+  }
+};
+</file>
+
+<file path="src/modules/safety/safety.types.ts">
+import type { InteractionType, Severity } from '../../types/common';
+
+export interface InteractionWarning {
+  drug_name: string;
+  interaction_type: InteractionType;
+  interacting_substance: string;
+  severity: Severity;
+  description_en: string;
+  description_hi: string | null;
+  source: string;
+}
+
+export interface SafetyReport {
+  prescription_id: string;
+  warnings: InteractionWarning[];
+  formatted_summary: string;
+}
+
+export interface SafetyQuery {
+  drug_names: string[];
+}
+</file>
+
+<file path="src/routes/auth.routes.ts">
+import { Router } from 'express';
+import { authController } from '../modules/auth/auth.controller';
+import { LoginSchema, RegisterSchema } from '../modules/auth/auth.validator';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { authLimiter } from '../middleware/rateLimit.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+
+export const authRouter = Router();
+authRouter.post('/register', authLimiter, validateBody(RegisterSchema), authController.register);
+authRouter.post('/login', authLimiter, validateBody(LoginSchema), authController.login);
+authRouter.get('/me', authMiddleware, authController.me);
+</file>
+
+<file path="src/routes/call.routes.ts">
+import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { callController } from '../modules/calls/call.controller';
+
+export const callRouter = Router();
+callRouter.get('/', authMiddleware, callController.getCallLogs);
+callRouter.post('/trigger', authMiddleware, callController.triggerCall);
+</file>
+
+<file path="src/routes/companion.routes.ts">
+import { Router } from 'express';
+import { z } from 'zod';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { companionLimiter } from '../middleware/rateLimit.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+import { companionController } from '../modules/companion/companion.controller';
+
+const ChatSchema = z.object({ patient_id: z.string().uuid(), message: z.string().min(1), language: z.enum(['hi', 'en']).default('hi') });
+export const companionRouter = Router();
+companionRouter.post('/chat', authMiddleware, companionLimiter, validateBody(ChatSchema), companionController.chat);
+companionRouter.get('/history/:patientId', authMiddleware, companionController.getHistory);
+</file>
+
+<file path="src/routes/dashboard.routes.ts">
+import { Router } from 'express';
+import { optionalDemoAuth } from '../middleware/auth.middleware';
+import { dashboardController } from '../modules/dashboard/dashboard.controller';
+
+export const dashboardRouter = Router();
+dashboardRouter.get('/', optionalDemoAuth, dashboardController.getSummary);
+dashboardRouter.get('/patient/:id', optionalDemoAuth, dashboardController.getPatient);
+dashboardRouter.get('/patient/:id/vitals', optionalDemoAuth, dashboardController.getVitals);
+</file>
+
+<file path="src/routes/index.ts">
+import { Router } from 'express';
+import { authRouter } from './auth.routes';
+import { callRouter } from './call.routes';
+import { companionRouter } from './companion.routes';
+import { dashboardRouter } from './dashboard.routes';
+import { medicationRouter } from './medication.routes';
+import { onboardingRouter } from './onboarding.routes';
+import { prescriptionRouter } from './prescription.routes';
+import { safetyController } from '../modules/safety/safety.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
+
+export const router = Router();
+router.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+router.use('/auth', authRouter);
+router.use('/onboarding', onboardingRouter);
+router.use('/prescriptions', prescriptionRouter);
+router.use('/medications', medicationRouter);
+router.post('/safety/check', authMiddleware, safetyController.checkDrugs);
+router.get('/safety/:prescriptionId/warnings', authMiddleware, safetyController.getWarnings);
+router.use('/companion', companionRouter);
+router.use('/calls', callRouter);
+router.use('/dashboard', dashboardRouter);
+</file>
+
+<file path="src/routes/medication.routes.ts">
+import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+import { medicationController } from '../modules/medications/medication.controller';
+import { CreateScheduleSchema } from '../modules/medications/medication.types';
+
+export const medicationRouter = Router();
+medicationRouter.post('/', authMiddleware, validateBody(CreateScheduleSchema), medicationController.create);
+medicationRouter.get('/', authMiddleware, medicationController.list);
+medicationRouter.delete('/:id', authMiddleware, medicationController.delete);
+medicationRouter.post('/:id/trigger', authMiddleware, medicationController.trigger);
+</file>
+
+<file path="src/routes/onboarding.routes.ts">
+import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+import { onboardingController } from '../modules/onboarding/onboarding.controller';
+import { OnboardingSchema, CreatePatientSchema } from '../modules/onboarding/onboarding.validator';
+
+export const onboardingRouter = Router();
+onboardingRouter.post('/patients', authMiddleware, validateBody(OnboardingSchema), onboardingController.createPatient);
+onboardingRouter.get('/patients', authMiddleware, onboardingController.listPatients);
+onboardingRouter.get('/patients/:id', authMiddleware, onboardingController.getPatient);
+onboardingRouter.patch('/patients/:id', authMiddleware, validateBody(CreatePatientSchema.partial()), onboardingController.updatePatient);
+</file>
+
+<file path="src/routes/prescription.routes.ts">
+import { Router } from 'express';
+import { optionalDemoAuth } from '../middleware/auth.middleware';
+import { uploadLimiter } from '../middleware/rateLimit.middleware';
+import { handlePrescriptionUpload } from '../middleware/upload.middleware';
+import { validateBody } from '../middleware/validate.middleware';
+import { prescriptionController } from '../modules/prescriptions/prescription.controller';
+import { VerifyPrescriptionSchema } from '../modules/prescriptions/prescription.validator';
+import { safetyController } from '../modules/safety/safety.controller';
+
+export const prescriptionRouter = Router();
+prescriptionRouter.post('/', optionalDemoAuth, uploadLimiter, handlePrescriptionUpload, prescriptionController.upload);
+prescriptionRouter.get('/', optionalDemoAuth, prescriptionController.list);
+prescriptionRouter.get('/:id', optionalDemoAuth, prescriptionController.getOne);
+prescriptionRouter.post('/:id/verify', optionalDemoAuth, validateBody(VerifyPrescriptionSchema), prescriptionController.verify);
+prescriptionRouter.get('/:id/warnings', optionalDemoAuth, safetyController.getWarnings);
+</file>
+
+<file path="src/routes/webhook.routes.ts">
+import { Router } from 'express';
+import { asyncHandler } from '../utils/asyncHandler';
+import { handleExotelIvr } from '../webhooks/exotelIvr.webhook';
+import { handleExotelStatus } from '../webhooks/exotelStatus.webhook';
+
+export const webhookRouter = Router();
+webhookRouter.post('/exotel/ivr', asyncHandler(handleExotelIvr));
+webhookRouter.post('/exotel/status', asyncHandler(handleExotelStatus));
+</file>
+
+<file path="src/server.ts">
+import http from 'http';
+import { env } from './config/env';
+import { logger } from './config/logger';
+import { app } from './app';
+import { startScheduler } from './jobs/scheduler';
+
+const server = http.createServer(app);
+
+server.listen(env.PORT, () => {
+  logger.info(`Saya.ai backend running on port ${env.PORT}`);
+  startScheduler();
+});
+
+function shutdown(signal: string): void {
+  logger.info('[SERVER] Shutdown requested', { signal });
+  server.close(() => {
+    logger.info('[SERVER] Shutdown complete');
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+</file>
+
+<file path="src/types/common.ts">
+export interface PaginationParams {
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export type Language = 'hi' | 'en';
+export type Severity = 'high' | 'moderate' | 'low';
+export type SentimentTag = 'joy' | 'neutral' | 'anxiety' | 'sadness';
+export type CallStatus = 'pending' | 'initiated' | 'answered' | 'confirmed' | 'rejected' | 'no_answer' | 'failed';
+export type InteractionType = 'food' | 'drug';
+</file>
+
+<file path="src/types/database.ts">
+export interface User {
+  id: string;
+  email: string;
+  password_hash: string;
+  full_name: string;
+  phone: string;
+  role: 'caregiver' | 'admin';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Patient {
+  id: string;
+  caregiver_id: string;
+  full_name: string;
+  phone: string;
+  date_of_birth: string | null;
+  language_preference: 'hi' | 'en';
+  companion_tone: 'warm' | 'formal' | 'playful';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApprovedContact {
+  id: string;
+  patient_id: string;
+  name: string;
+  phone: string;
+  relationship: string;
+  can_receive_escalation_sms: boolean;
+  created_at: string;
+}
+
+export interface Prescription {
+  id: string;
+  patient_id: string;
+  caregiver_id: string;
+  image_url: string;
+  raw_ocr_text: string | null;
+  verified: boolean;
+  verified_at: string | null;
+  verified_by: string | null;
+  created_at: string;
+}
+
+export interface Medicine {
+  id: string;
+  prescription_id: string;
+  drug_name: string;
+  dosage: string | null;
+  frequency: string | null;
+  route: string | null;
+  low_confidence: boolean;
+  created_at: string;
+}
+
+export interface DrugInteraction {
+  id: string;
+  drug_name: string;
+  drug_aliases: string[];
+  interaction_type: 'food' | 'drug';
+  interacting_substance: string;
+  severity: 'high' | 'moderate' | 'low';
+  description_en: string;
+  description_hi: string | null;
+  source: 'indian_db' | 'openfda' | 'rxnorm';
+  created_at: string;
+}
+
+export interface MedicationSchedule {
+  id: string;
+  patient_id: string;
+  caregiver_id: string;
+  medicine_name: string;
+  scheduled_time: string;
+  custom_message: string | null;
+  language: 'hi' | 'en';
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CallLog {
+  id: string;
+  schedule_id: string;
+  patient_id: string;
+  exotel_call_sid: string | null;
+  status: 'pending' | 'initiated' | 'answered' | 'confirmed' | 'rejected' | 'no_answer' | 'failed';
+  attempt_number: number;
+  initiated_at: string | null;
+  answered_at: string | null;
+  ivr_response: '1' | '2' | null;
+  created_at: string;
+}
+
+export interface CompanionMessage {
+  id: string;
+  patient_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sentiment: 'joy' | 'neutral' | 'anxiety' | 'sadness' | null;
+  created_at: string;
+}
+
+export interface PatientMemory {
+  id: string;
+  patient_id: string;
+  memory_key: string;
+  memory_value: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Alert {
+  id: string;
+  patient_id: string;
+  caregiver_id: string;
+  alert_type: 'missed_medication' | 'emotional_escalation' | 'companion_request';
+  message: string;
+  sms_sent: boolean;
+  sms_sent_at: string | null;
+  resolved: boolean;
+  created_at: string;
+}
+
+export interface NewsCache {
+  id: string;
+  headline: string;
+  summary: string | null;
+  source: string | null;
+  fetched_at: string;
+}
+
+export interface DemoVital {
+  id: string;
+  patient_id: string;
+  metric: 'blood_pressure_systolic' | 'blood_pressure_diastolic' | 'heart_rate' | 'blood_sugar' | 'spo2';
+  value: number;
+  unit: string;
+  recorded_at: string;
+}
+
+type Table<Row> = {
+  Row: Row;
+  Insert: Partial<Row>;
+  Update: Partial<Row>;
+  Relationships: [];
+};
+
+export interface Database {
+  public: {
+    Tables: {
+      users: Table<User>;
+      patients: Table<Patient>;
+      approved_contacts: Table<ApprovedContact>;
+      prescriptions: Table<Prescription>;
+      medicines: Table<Medicine>;
+      drug_interactions: Table<DrugInteraction>;
+      medication_schedules: Table<MedicationSchedule>;
+      call_logs: Table<CallLog>;
+      companion_messages: Table<CompanionMessage>;
+      patient_memories: Table<PatientMemory>;
+      alerts: Table<Alert>;
+      news_cache: Table<NewsCache>;
+      demo_vitals: Table<DemoVital>;
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
+</file>
+
+<file path="src/types/env.ts">
+import { z } from 'zod';
+import { EnvSchema } from '../config/env';
+
+export type Env = z.infer<typeof EnvSchema>;
+</file>
+
+<file path="src/types/express.d.ts">
+declare namespace Express {
+  interface Request {
+    user?: {
+      id: string;
+      email: string;
+      role: 'caregiver' | 'admin';
+    };
+  }
+}
+</file>
+
+<file path="src/types/node-cron.d.ts">
+declare module 'node-cron' {
+  export interface ScheduledTask {
+    start(): void;
+    stop(): void;
+    destroy(): void;
+  }
+  export function schedule(expression: string, callback: () => void | Promise<void>): ScheduledTask;
+  const cron: { schedule: typeof schedule };
+  export default cron;
+}
+</file>
+
+<file path="src/utils/apiError.ts">
+export class ApiError extends Error {
+  statusCode: number;
+  details?: unknown;
+
+  constructor(statusCode: number, message: string, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.details = details;
+    Error.captureStackTrace(this, this.constructor);
+  }
+
+  static badRequest(message: string, details?: unknown): ApiError {
+    return new ApiError(400, message, details);
+  }
+
+  static unauthorized(message = 'Unauthorized'): ApiError {
+    return new ApiError(401, message);
+  }
+
+  static forbidden(message = 'Forbidden'): ApiError {
+    return new ApiError(403, message);
+  }
+
+  static notFound(resource = 'Resource'): ApiError {
+    return new ApiError(404, `${resource} not found`);
+  }
+
+  static conflict(message: string): ApiError {
+    return new ApiError(409, message);
+  }
+
+  static internal(message = 'Internal server error'): ApiError {
+    return new ApiError(500, message);
+  }
+}
+</file>
+
+<file path="src/utils/apiResponse.ts">
+export function successResponse<T>(data: T, message = 'Success') {
+  return { success: true as const, message, data };
+}
+
+export function paginatedResponse<T>(data: T[], total: number, page: number, limit: number) {
+  return {
+    success: true as const,
+    data,
+    pagination: { total, page, limit, hasMore: page * limit < total }
+  };
+}
+</file>
+
+<file path="src/utils/asyncHandler.ts">
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+
+export const asyncHandler = <T extends Request = Request>(
+  fn: (req: T, res: Response, next: NextFunction) => Promise<unknown>
+): RequestHandler => (req, res, next) => {
+  Promise.resolve(fn(req as T, res, next)).catch(next);
+};
+</file>
+
+<file path="src/utils/confidence.ts">
+type MaybeConfidence = { low_confidence?: unknown };
+
+export function isLowConfidenceField(field: unknown): boolean {
+  return typeof field === 'object' && field !== null && (field as MaybeConfidence).low_confidence === true;
+}
+
+export function countLowConfidenceFields(nerResult: object): number {
+  let count = 0;
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (typeof value === 'object' && value !== null) {
+      if (isLowConfidenceField(value)) count += 1;
+      Object.values(value as Record<string, unknown>).forEach(visit);
+    }
+  };
+  visit(nerResult);
+  return count;
+}
+
+export function shouldRequireManualReview(nerResult: object): boolean {
+  const medicines = (nerResult as { medicines?: Array<{ drug_name?: string; low_confidence?: boolean }> }).medicines;
+  if (!Array.isArray(medicines) || medicines.length === 0) return true;
+  return medicines.some((medicine) => !medicine.drug_name || medicine.low_confidence === true) || countLowConfidenceFields(nerResult) > 0;
+}
+</file>
+
+<file path="src/utils/dateTime.ts">
+import { addDays, format } from 'date-fns';
+
+const IST_OFFSET_MINUTES = 330;
+
+export function toIST(date: Date | string): Date {
+  const parsed = typeof date === 'string' ? new Date(date) : date;
+  return new Date(parsed.getTime() + IST_OFFSET_MINUTES * 60 * 1000);
+}
+
+export function formatIST(date: Date | string, formatStr: string): string {
+  return format(toIST(date), formatStr);
+}
+
+export function parseScheduleTime(timeStr: string): { hours: number; minutes: number } {
+  const match = /^(\d{2}):(\d{2})$/.exec(timeStr);
+  if (!match) throw new Error('Schedule time must be in HH:MM format');
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) throw new Error('Schedule time must be a valid HH:MM time');
+  return { hours, minutes };
+}
+
+export function getNextOccurrence(timeStr: string): Date {
+  const { hours, minutes } = parseScheduleTime(timeStr);
+  const nowUtc = new Date();
+  const nowIst = toIST(nowUtc);
+  const nextIst = new Date(nowIst);
+  nextIst.setHours(hours, minutes, 0, 0);
+  const finalIst = nextIst.getTime() <= nowIst.getTime() ? addDays(nextIst, 1) : nextIst;
+  return new Date(finalIst.getTime() - IST_OFFSET_MINUTES * 60 * 1000);
+}
+
+export function isoNow(): string {
+  return new Date().toISOString();
+}
+</file>
+
+<file path="src/utils/language.ts">
+import type { Language } from '../types/common';
+
+export function buildMedicationReminderScript(medicineName: string, customMessage: string | null, language: Language): string {
+  const base = language === 'hi'
+    ? `Namaste. Yeh aapke parivaar ki taraf se ek yaad dilaane ki call hai. Abhi apni ${medicineName} ki goli lijiye.`
+    : `Hello. This is a reminder call from your family. Please take your ${medicineName} medicine now.`;
+  return customMessage ? `${base} ${customMessage}` : base;
+}
+
+export function buildIvrPrompt(language: Language): string {
+  return language === 'hi'
+    ? 'Kya aapne apni dawai le li? Haan ke liye 1 dabaiye, nahi ke liye 2 dabaiye.'
+    : 'Have you taken your medicine? Press 1 for yes, or 2 for no.';
+}
+
+export function buildMissedMedicationSMS(patientName: string, medicineName: string, caregiverName: string, language: Language): string {
+  return language === 'hi'
+    ? `Saya.ai alert: ${patientName} ne ${medicineName} ke reminder call ka jawab nahi diya. Kripya turant check karein. - ${caregiverName}`
+    : `Saya.ai alert: ${patientName} did not answer the reminder calls for ${medicineName}. Please check on them urgently. - ${caregiverName}`;
+}
+
+export function buildConfirmedMedicationSMS(patientName: string, medicineName: string, language: Language): string {
+  return language === 'hi'
+    ? `Saya.ai update: ${patientName} ne confirm kiya hai ki unhone ${medicineName} le li hai.`
+    : `Saya.ai update: ${patientName} confirmed they have taken ${medicineName}.`;
+}
+
+export function buildEmotionalEscalationSMS(patientName: string): string {
+  return `Saya.ai gentle alert: ${patientName} has sounded sad or anxious in two recent messages. Please check in when you can.`;
+}
+</file>
+
+<file path="src/utils/phone.ts">
+import { ApiError } from './apiError';
+
+export function toE164India(phone: string): string {
+  const stripped = phone.replace(/[\s\-()]/g, '');
+  let normalized = stripped;
+  if (/^\d{10}$/.test(normalized)) normalized = `+91${normalized}`;
+  if (/^0\d{10}$/.test(normalized)) normalized = `+91${normalized.slice(1)}`;
+  if (/^91\d{10}$/.test(normalized)) normalized = `+${normalized}`;
+  if (!isValidIndianPhone(normalized)) throw ApiError.badRequest('Invalid Indian mobile number');
+  return normalized;
+}
+
+export function isValidIndianPhone(phone: string): boolean {
+  return /^\+91[6-9]\d{9}$/.test(phone);
+}
+
+export function maskPhone(phone: string): string {
+  const normalized = phone.replace(/[\s\-()]/g, '');
+  if (normalized.length <= 8) return normalized;
+  return `${normalized.slice(0, 5)}XXXX...${normalized.slice(-4)}`;
+}
+</file>
+
+<file path="src/webhooks/exotelIvr.webhook.ts">
+import type { Request, Response } from 'express';
+import { logger } from '../config/logger';
+import { callService } from '../modules/calls/call.service';
+import type { IvrWebhookPayload } from './webhook.types';
+
+export async function handleExotelIvr(req: Request, res: Response): Promise<void> {
+  const payload = req.body as IvrWebhookPayload;
+  logger.info('[WEBHOOK] Exotel IVR received', { body: payload });
+  await callService.handleIvrResponse(payload);
+  const message = payload.Digits === '1'
+    ? 'Dhanyawaad. Humne aapke parivaar ko suchit kar diya. Thank you. Your family has been notified.'
+    : 'Theek hai. Kripya jaldi apni dawai lein. Okay. Please take your medicine soon.';
+  res.type('text/xml').send(`<Response><Say>${message}</Say></Response>`);
+}
+</file>
+
+<file path="src/webhooks/exotelStatus.webhook.ts">
+import type { Request, Response } from 'express';
+import { logger } from '../config/logger';
+import { callService } from '../modules/calls/call.service';
+import type { CallStatusWebhookPayload } from './webhook.types';
+
+export async function handleExotelStatus(req: Request, res: Response): Promise<void> {
+  const payload = req.body as CallStatusWebhookPayload;
+  logger.info('[WEBHOOK] Exotel status received', { body: payload });
+  await callService.handleCallStatusUpdate(payload);
+  res.status(200).end();
+}
+</file>
+
+<file path="src/webhooks/webhook.types.ts">
+export type { CallStatusWebhookPayload, IvrWebhookPayload } from '../modules/calls/call.types';
+</file>
+
+<file path="supabase/migrations/001_users_patients_contacts.sql">
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'caregiver' CHECK (role IN ('caregiver','admin')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS patients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  caregiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  date_of_birth DATE,
+  language_preference TEXT NOT NULL DEFAULT 'hi' CHECK (language_preference IN ('hi','en')),
+  companion_tone TEXT NOT NULL DEFAULT 'warm' CHECK (companion_tone IN ('warm','formal','playful')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS approved_contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  relationship TEXT NOT NULL,
+  can_receive_escalation_sms BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS users_set_updated_at ON users;
+CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DROP TRIGGER IF EXISTS patients_set_updated_at ON patients;
+CREATE TRIGGER patients_set_updated_at BEFORE UPDATE ON patients FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+</file>
+
+<file path="supabase/migrations/002_prescriptions_medicines.sql">
+CREATE TABLE IF NOT EXISTS prescriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  raw_ocr_text TEXT,
+  verified BOOLEAN NOT NULL DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  verified_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_id ON prescriptions(patient_id);
+
+CREATE TABLE IF NOT EXISTS medicines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+  drug_name TEXT NOT NULL,
+  dosage TEXT,
+  frequency TEXT,
+  route TEXT,
+  low_confidence BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_medicines_prescription_id ON medicines(prescription_id);
+</file>
+
+<file path="supabase/migrations/003_drug_interactions.sql">
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE IF NOT EXISTS drug_interactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  drug_name TEXT NOT NULL,
+  drug_aliases TEXT[] NOT NULL DEFAULT '{}',
+  interaction_type TEXT NOT NULL CHECK (interaction_type IN ('food','drug')),
+  interacting_substance TEXT NOT NULL,
+  severity TEXT NOT NULL CHECK (severity IN ('high','moderate','low')),
+  description_en TEXT NOT NULL,
+  description_hi TEXT,
+  source TEXT NOT NULL DEFAULT 'indian_db' CHECK (source IN ('indian_db','openfda','rxnorm')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT drug_interactions_unique UNIQUE (drug_name, interaction_type, interacting_substance)
+);
+CREATE INDEX IF NOT EXISTS idx_drug_interactions_aliases ON drug_interactions USING GIN (drug_aliases);
+CREATE INDEX IF NOT EXISTS idx_drug_interactions_name_trgm ON drug_interactions USING GIN (drug_name gin_trgm_ops);
+</file>
+
+<file path="supabase/migrations/004_medication_schedules_calls.sql">
+CREATE TABLE IF NOT EXISTS medication_schedules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  medicine_name TEXT NOT NULL,
+  scheduled_time TEXT NOT NULL CHECK (scheduled_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+  custom_message TEXT,
+  language TEXT NOT NULL DEFAULT 'hi' CHECK (language IN ('hi','en')),
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_medication_schedules_due ON medication_schedules(active, scheduled_time);
+DROP TRIGGER IF EXISTS medication_schedules_set_updated_at ON medication_schedules;
+CREATE TRIGGER medication_schedules_set_updated_at BEFORE UPDATE ON medication_schedules FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TABLE IF NOT EXISTS call_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id UUID NOT NULL REFERENCES medication_schedules(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  exotel_call_sid TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','initiated','answered','confirmed','rejected','no_answer','failed')),
+  attempt_number INTEGER NOT NULL DEFAULT 1,
+  initiated_at TIMESTAMPTZ,
+  answered_at TIMESTAMPTZ,
+  ivr_response TEXT CHECK (ivr_response IN ('1','2')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_call_logs_schedule_attempt ON call_logs(schedule_id, attempt_number);
+CREATE INDEX IF NOT EXISTS idx_call_logs_sid ON call_logs(exotel_call_sid);
+</file>
+
+<file path="supabase/migrations/005_companion_memory_messages.sql">
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS companion_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+  content TEXT NOT NULL,
+  sentiment TEXT CHECK (sentiment IN ('joy','neutral','anxiety','sadness')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_companion_messages_patient_created ON companion_messages(patient_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS patient_memories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  memory_key TEXT NOT NULL,
+  memory_value TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT patient_memories_unique UNIQUE (patient_id, memory_key)
+);
+DROP TRIGGER IF EXISTS patient_memories_set_updated_at ON patient_memories;
+CREATE TRIGGER patient_memories_set_updated_at BEFORE UPDATE ON patient_memories FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+</file>
+
+<file path="supabase/migrations/006_alerts_news_vitals.sql">
+CREATE TABLE IF NOT EXISTS alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  alert_type TEXT NOT NULL CHECK (alert_type IN ('missed_medication','emotional_escalation','companion_request')),
+  message TEXT NOT NULL,
+  sms_sent BOOLEAN DEFAULT false,
+  sms_sent_at TIMESTAMPTZ,
+  resolved BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_alerts_patient_resolved_created ON alerts(patient_id, resolved, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS news_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  headline TEXT NOT NULL,
+  summary TEXT,
+  source TEXT,
+  fetched_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_news_cache_fetched_at ON news_cache(fetched_at DESC);
+
+CREATE TABLE IF NOT EXISTS demo_vitals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID,
+  metric TEXT NOT NULL,
+  value NUMERIC NOT NULL,
+  unit TEXT NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_demo_vitals_patient_metric_recorded ON demo_vitals(patient_id, metric, recorded_at DESC);
+</file>
+
+<file path="supabase/schema.sql">
+\i migrations/001_users_patients_contacts.sql
+\i migrations/002_prescriptions_medicines.sql
+\i migrations/003_drug_interactions.sql
+\i migrations/004_medication_schedules_calls.sql
+\i migrations/005_companion_memory_messages.sql
+\i migrations/006_alerts_news_vitals.sql
+</file>
+
+<file path="supabase/seed.demo.sql">
+INSERT INTO users (id, email, password_hash, full_name, phone, role)
+VALUES ('00000000-0000-0000-0000-000000000101', 'demo@saya.ai', '$2a$12$yQ2tBrYaMfDfN7G8P5p7P.FQqQ7ZdBN1dRdnN/SUXOc6igbRXrlYW', 'Priya Kumar', '+919876543211', 'caregiver')
+ON CONFLICT (email) DO NOTHING;
+
+INSERT INTO patients (id, caregiver_id, full_name, phone, date_of_birth, language_preference, companion_tone)
+VALUES ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000101', 'Ramesh Kumar', '+919876543210', '1948-01-01', 'hi', 'warm')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO approved_contacts (patient_id, name, phone, relationship, can_receive_escalation_sms)
+VALUES ('00000000-0000-0000-0000-000000000201', 'Priya Kumar', '+919876543211', 'daughter', true);
+
+INSERT INTO prescriptions (id, patient_id, caregiver_id, image_url, raw_ocr_text, verified, verified_at, verified_by)
+VALUES
+('00000000-0000-0000-0000-000000001001','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/dolo.png','Dolo-650 250mg BD',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001002','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/metoprolol.png','Metoprolol 25mg OD',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001003','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/atorvastatin.png','Atorvastatin 10mg night',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001004','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/telma-am.png','Telma-AM 40mg morning',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001005','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/metformin.png','Metformin 500mg BD',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001006','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/pantoprazole.png','Pantoprazole 40mg before breakfast',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001007','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/levothyroxine.png','Levothyroxine 50mcg empty stomach',true,NOW(),'00000000-0000-0000-0000-000000000101'),
+('00000000-0000-0000-0000-000000001008','00000000-0000-0000-0000-000000000201','00000000-0000-0000-0000-000000000101','/uploads/demo/amlodipine.png','Amlodipine 5mg OD',true,NOW(),'00000000-0000-0000-0000-000000000101')
+ON CONFLICT (id) DO NOTHING;
+</file>
+
+<file path="tests/safetyFallbackClients.test.ts">
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+function setRequiredEnv(): void {
+  Object.assign(process.env, {
+    PORT: '3001',
+    NODE_ENV: 'test',
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+    GROQ_API_KEY: 'groq-key',
+    GOOGLE_APPLICATION_CREDENTIALS: './gcp-credentials.json',
+    AWS_ACCESS_KEY_ID: 'aws-key',
+    AWS_SECRET_ACCESS_KEY: 'aws-secret',
+    AWS_REGION: 'ap-south-1',
+    EXOTEL_SID: 'exotel-sid',
+    EXOTEL_API_KEY: 'exotel-key',
+    EXOTEL_API_TOKEN: 'exotel-token',
+    EXOTEL_SUBDOMAIN: 'api.exotel.com',
+    EXOTEL_CALLER_ID: '+919876543210',
+    NEWS_API_KEY: 'news-key',
+    JWT_SECRET: 'abcdefghijklmnopqrstuvwxyz123456',
+    JWT_EXPIRES_IN: '7d',
+    FRONTEND_URL: 'http://localhost:5173',
+    BACKEND_URL: 'http://localhost:3001',
+    MAX_FILE_SIZE_MB: '10',
+    UPLOAD_DIR: './uploads',
+    MAX_CALL_RETRIES: '5',
+    RETRY_INTERVAL_MINUTES: '3'
+  });
+}
+
+test('maps openFDA label interaction text to traceable safety records', async () => {
+  setRequiredEnv();
+  const { mapOpenFdaLabelToInteractions } = await import('../src/modules/safety/openfda.client');
+
+  const records = mapOpenFdaLabelToInteractions('Aspirin', {
+    openfda: { brand_name: ['Ecosprin'], generic_name: ['Aspirin'] },
+    drug_interactions: ['Alcohol may increase bleeding risk when used with aspirin.'],
+    warnings: ['Serious bleeding can occur.']
+  });
+
+  assert.equal(records.length, 1);
+  assert.equal(records[0].drug_name, 'Aspirin');
+  assert.equal(records[0].interaction_type, 'drug');
+  assert.equal(records[0].interacting_substance, 'OpenFDA labeled interaction');
+  assert.equal(records[0].severity, 'moderate');
+  assert.equal(records[0].source, 'openfda');
+  assert.deepEqual(records[0].drug_aliases, ['Ecosprin', 'Aspirin']);
+});
+
+test('extracts RxNorm normalized names and aliases from related concept groups', async () => {
+  setRequiredEnv();
+  const { extractRxNormNames } = await import('../src/modules/safety/rxnorm.client');
+
+  const names = extractRxNormNames({
+    allRelatedGroup: {
+      conceptGroup: [
+        { tty: 'SCD', conceptProperties: [{ name: 'metformin 500 MG Oral Tablet' }] },
+        { tty: 'BN', conceptProperties: [{ name: 'Glucophage' }, { name: 'Glycomet' }] }
+      ]
+    }
+  });
+
+  assert.deepEqual(names, ['metformin 500 MG Oral Tablet', 'Glucophage', 'Glycomet']);
+});
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+</file>
+
+<file path="uploads/prescriptions/.gitkeep">
+
+</file>
+
+<file path="uploads/temp/.gitkeep">
+
+</file>
+
+</files>

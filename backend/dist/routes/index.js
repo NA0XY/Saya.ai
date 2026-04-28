@@ -1,0 +1,28 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.router = void 0;
+const express_1 = require("express");
+const zod_1 = require("zod");
+const auth_routes_1 = require("./auth.routes");
+const call_routes_1 = require("./call.routes");
+const companion_routes_1 = require("./companion.routes");
+const dashboard_routes_1 = require("./dashboard.routes");
+const medication_routes_1 = require("./medication.routes");
+const onboarding_routes_1 = require("./onboarding.routes");
+const prescription_routes_1 = require("./prescription.routes");
+const safety_controller_1 = require("../modules/safety/safety.controller");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const validate_middleware_1 = require("../middleware/validate.middleware");
+const SafetyParamsSchema = zod_1.z.object({ prescriptionId: zod_1.z.string().min(1) });
+exports.router = (0, express_1.Router)();
+exports.router.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+exports.router.use('/auth', auth_routes_1.authRouter);
+exports.router.use('/onboarding', onboarding_routes_1.onboardingRouter);
+exports.router.use('/prescriptions', prescription_routes_1.prescriptionRouter);
+exports.router.use('/medications', medication_routes_1.medicationRouter);
+exports.router.post('/safety/check', auth_middleware_1.authMiddleware, safety_controller_1.safetyController.checkDrugs);
+exports.router.get('/safety/:prescriptionId/warnings', auth_middleware_1.authMiddleware, (0, validate_middleware_1.validateParams)(SafetyParamsSchema), safety_controller_1.safetyController.getWarnings);
+exports.router.use('/companion', companion_routes_1.companionRouter);
+exports.router.use('/calls', call_routes_1.callRouter);
+exports.router.use('/dashboard', dashboard_routes_1.dashboardRouter);
+//# sourceMappingURL=index.js.map

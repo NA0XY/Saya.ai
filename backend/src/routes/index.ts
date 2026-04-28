@@ -1,0 +1,25 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { authRouter } from './auth.routes';
+import { callRouter } from './call.routes';
+import { companionRouter } from './companion.routes';
+import { dashboardRouter } from './dashboard.routes';
+import { medicationRouter } from './medication.routes';
+import { onboardingRouter } from './onboarding.routes';
+import { prescriptionRouter } from './prescription.routes';
+import { safetyController } from '../modules/safety/safety.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { validateParams } from '../middleware/validate.middleware';
+
+const SafetyParamsSchema = z.object({ prescriptionId: z.string().min(1) });
+export const router = Router();
+router.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+router.use('/auth', authRouter);
+router.use('/onboarding', onboardingRouter);
+router.use('/prescriptions', prescriptionRouter);
+router.use('/medications', medicationRouter);
+router.post('/safety/check', authMiddleware, safetyController.checkDrugs);
+router.get('/safety/:prescriptionId/warnings', authMiddleware, validateParams(SafetyParamsSchema), safetyController.getWarnings);
+router.use('/companion', companionRouter);
+router.use('/calls', callRouter);
+router.use('/dashboard', dashboardRouter);
