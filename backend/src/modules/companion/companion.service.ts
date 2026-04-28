@@ -46,7 +46,13 @@ export const companionService = {
     const memoriesUpdated = await memoryService.extractAndSaveMemories(patient.id, rawReply);
     const cleanReply = memoryService.stripControlTags(rawReply);
     const sentiment = await sentimentService.analyzeSentiment(request.message, request.language);
-    await supabase.from('companion_messages').insert([{ patient_id: patient.id, role: 'user', content: request.message, sentiment }, { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }]);
+    const { error: messageInsertError } = await supabase
+      .from('companion_messages')
+      .insert([
+        { patient_id: patient.id, role: 'user', content: request.message, sentiment },
+        { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }
+      ]);
+    if (messageInsertError) throw ApiError.internal('Failed to store companion messages');
     if (familyAction.hasAction && familyAction.message) {
       const target = contacts[0];
       if (target) {
@@ -54,8 +60,8 @@ export const companionService = {
         await alertService.createAlert({ patient_id: patient.id, caregiver_id: caregiverId, alert_type: 'companion_request', message: familyAction.message });
       }
     }
-    await sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
-    return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated };
+    const escalated = await sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
+    return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated, escalated };
   },
   async getHistory(patientId: string, limit = 50) {
     const { data, error } = await supabase.from('companion_messages').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(limit);
