@@ -17,6 +17,7 @@ import { patientRepository } from '../patients/patient.repository';
 import { patientService } from '../patients/patient.service';
 import { companionService } from '../companion/companion.service';
 import type { SentimentTag } from '../../types/common';
+import { convertLocalTimeToIst } from '../../utils/dateTime';
 import { toE164India } from '../../utils/phone';
 import type {
   AlertDto,
@@ -24,10 +25,13 @@ import type {
   FrontendChatInput,
   FrontendOnboardingInput,
   FrontendScheduleInput,
+  GuardianContactInput,
   HealthVitalsDto,
   HealthVitalsQuery,
   MedicineDto,
   SafetyStatusDto,
+  PatientNumberInput,
+  UpdateSettingsInput,
   UserProfileDto
 } from './frontendContract.types';
 
@@ -123,14 +127,26 @@ function signToken(user: Pick<User, 'id' | 'email' | 'role'>): string {
   return jwt.sign({ id: user.id, email: user.email, role: user.role }, env.JWT_SECRET, options);
 }
 
-function toUserProfile(user: Pick<User, 'id' | 'email' | 'full_name' | 'role'>, onboardingComplete: boolean): UserProfileDto {
+function toUserProfile(
+  user: Pick<User, 'id' | 'email' | 'full_name' | 'role'>,
+  onboardingComplete: boolean,
+  patientNumber: string | null = null,
+  guardianContacts: Array<{ name: string; phone: string }> = [],
+): UserProfileDto {
   return {
     id: user.id,
     name: user.full_name,
     email: user.email,
     onboardingComplete,
-    role: user.role === 'caregiver' ? 'caregiver' : 'caregiver'
+    role: user.role === 'caregiver' ? 'caregiver' : 'caregiver',
+    patientNumber,
+    guardianContacts: guardianContacts.length > 0 ? guardianContacts : undefined,
   };
+}
+
+async function getPrimaryPatient(userId: string) {
+  const patients = await patientRepository.findByCaregiverId(userId);
+  return patients[0] ?? null;
 }
 
 async function getOnboardingComplete(userId: string): Promise<boolean> {
@@ -355,7 +371,71 @@ export const frontendContractService = {
     const result = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
     if (result.error) throw ApiError.internal('Failed to load user profile');
     if (!result.data) throw ApiError.notFound('User');
-    return toUserProfile(result.data, await getOnboardingComplete(userId));
+    const primaryPatient = await getPrimaryPatient(userId);
+    const guardianContacts = primaryPatient ? await patientRepository.findContactsByPatientId(primaryPatient.id) : [];
+    return toUserProfile(
+      result.data,
+      await getOnboardingComplete(userId),
+      primaryPatient?.phone ?? null,
+      guardianContacts.map((contact) => ({ name: contact.name, phone: contact.phone }))
+    );
+  },
+
+  async updatePatientNumber(userId: string, input: PatientNumberInput): Promise<{ status: string; patientNumber: string }> {
+    const patientNumber = toE164India(input.patientNumber);
+    const userResult = await supabase.from('users').select('id, full_name').eq('id', userId).maybeSingle();
+    if (userResult.error) throw ApiError.internal('Failed to load user profile');
+    if (!userResult.data) throw ApiError.notFound('User');
+
+    const primaryPatient = await getPrimaryPatient(userId);
+    if (primaryPatient) {
+      await patientRepository.update(primaryPatient.id, { phone: patientNumber });
+    } else {
+      await patientRepository.create({
+        caregiver_id: userId,
+        full_name: userResult.data.full_name,
+        phone: patientNumber,
+        date_of_birth: null,
+        language_preference: 'en',
+        companion_tone: 'warm'
+      });
+    }
+
+    return { status: 'success', patientNumber };
+  },
+
+  async updateSettings(userId: string, input: UpdateSettingsInput): Promise<{ status: string; contacts?: GuardianContactInput[] }> {
+    const primaryPatient = await getPrimaryPatient(userId);
+    if (!primaryPatient) {
+      throw ApiError.notFound('Patient record not found');
+    }
+
+    // If contacts are provided, update them
+    if (input.contacts && input.contacts.length > 0) {
+      // Delete existing contacts
+      await patientRepository.deleteContactsByPatientId(primaryPatient.id);
+
+      // Create new contacts
+      for (const contact of input.contacts) {
+        await patientRepository.createContact({
+          patient_id: primaryPatient.id,
+          name: contact.name,
+          phone: toE164India(contact.phone),
+          relationship: 'family',
+          can_receive_escalation_sms: true
+        });
+      }
+    }
+
+    // If personality or language are provided, update patient settings
+    if (input.personality || input.language) {
+      const updateData: any = {};
+      if (input.personality) updateData.companion_tone = input.personality;
+      if (input.language) updateData.language_preference = input.language === 'hindi' ? 'hi' : 'en';
+      await patientRepository.update(primaryPatient.id, updateData);
+    }
+
+    return { status: 'success', contacts: input.contacts };
   },
 
   async submitOnboarding(userId: string, input: FrontendOnboardingInput): Promise<{ status: string }> {
@@ -447,10 +527,12 @@ export const frontendContractService = {
   },
 
   async scheduleMedication(input: FrontendScheduleInput, caregiverId: string): Promise<{ id: string; status: string }> {
+    const normalizedTime = normalizeScheduleTime(input.time);
+    const scheduledTimeIst = convertLocalTimeToIst(normalizedTime, input.timezoneOffsetMinutes);
     const schedule: MedicationSchedule = await medicationService.createSchedule({
       patient_id: await getPrimaryPatientId(caregiverId),
       medicine_name: input.drugName,
-      scheduled_time: normalizeScheduleTime(input.time),
+      scheduled_time: scheduledTimeIst,
       custom_message: input.customMessage,
       language: 'en'
     }, caregiverId);

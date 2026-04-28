@@ -4,6 +4,7 @@ export type UserProfile = {
   email: string;
   onboardingComplete: boolean;
   role: "caregiver" | "parent";
+  patientNumber?: string | null;
   guardianContacts?: Array<{ name: string; phone: string }>;
   companionTone?: "warm" | "formal" | "playful" | null;
   companionLanguage?: "english" | "hindi" | null;
@@ -20,6 +21,10 @@ export type SettingsPayload = {
   contacts?: Array<{ name: string; phone: string }>;
   personality?: "warm" | "formal" | "playful";
   language?: "english" | "hindi";
+};
+
+export type PatientNumberPayload = {
+  patientNumber: string;
 };
 
 export type MemoryPayload = {
@@ -172,6 +177,11 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
+  updatePatientNumber: (payload: PatientNumberPayload) => request<{ status: string; patientNumber: string }>("/user/patient-number", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }),
+
   updateMemory: (payload: MemoryPayload) => request<{ status: string }>("/user/memory", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -193,7 +203,7 @@ export const api = {
     return request<{ medicines: MedicineDto[] }>("/medications/extract", { method: "POST", body });
   },
 
-  scheduleMedication: (payload: { drugName: string; time: string; customMessage?: string }) =>
+  scheduleMedication: (payload: { drugName: string; time: string; customMessage?: string; timezoneOffsetMinutes?: number }) =>
     request<{ id: string; status: string }>("/medications/schedule", {
       method: "POST",
       body: JSON.stringify(payload)

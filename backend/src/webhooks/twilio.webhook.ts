@@ -1,27 +1,76 @@
 import type { Request, Response } from 'express';
+import twilio from 'twilio';
 import { logger } from '../config/logger';
 import { callService } from '../modules/calls/call.service';
+import { medicationRepository } from '../modules/medications/medication.repository';
 import type { CallStatusWebhookPayload, IvrWebhookPayload } from './webhook.types';
 
 /**
- * Twilio IVR entrypoint — returns TwiML instructions when a call connects.
+ * Twilio voice entrypoint — returns TwiML instructions when a call connects.
  * Twilio fetches this URL (the `url` param from call creation) to get instructions.
  */
-export async function handleTwilioIvr(req: Request, res: Response): Promise<void> {
-  const { scheduleId, language } = req.query;
+export async function handleTwilioVoice(req: Request, res: Response): Promise<void> {
+  const { drugName, scheduleId } = req.query;
 
-  if (!scheduleId || typeof scheduleId !== 'string') {
-    logger.warn('[WEBHOOK] Twilio IVR request missing scheduleId');
-    res.status(400).send('Missing scheduleId');
-    return;
+  let resolvedDrugName = typeof drugName === 'string' && drugName.trim().length > 0 ? drugName.trim() : '';
+  let customMessage: string | null = null;
+  let language: 'hi' | 'en' = 'en';
+
+  if (typeof scheduleId === 'string' && scheduleId.trim().length > 0) {
+    const schedule = await medicationRepository.findScheduleById(scheduleId);
+    if (schedule) {
+      if (!resolvedDrugName) {
+        resolvedDrugName = schedule.medicine_name;
+      }
+      customMessage = schedule.custom_message;
+      language = schedule.language;
+      logger.info('[WEBHOOK] Fetched schedule for voice', { scheduleId, medicineName: resolvedDrugName, hasCustomMessage: !!customMessage, language });
+    } else {
+      logger.warn('[WEBHOOK] Schedule not found in DB', { scheduleId });
+    }
   }
 
-  const lang = language === 'hi' || language === 'en' ? language : 'en';
-  logger.info('[WEBHOOK] Twilio IVR — generating TwiML', { scheduleId, language: lang });
+  if (!resolvedDrugName) {
+    logger.warn('[WEBHOOK] Twilio voice request missing drug name', { scheduleId: typeof scheduleId === 'string' ? scheduleId : undefined });
+  }
 
-  const twiml = callService.generateCallTwiML(scheduleId, lang);
-  res.type('text/xml').send(twiml);
+  const { VoiceResponse } = twilio.twiml;
+  const twiml = new VoiceResponse();
+  const promptDrug = resolvedDrugName || 'your medicine';
+  const voiceLanguage = language === 'hi' ? 'hi-IN' : 'en-IN';
+  const voiceName = 'Polly.Aditi';
+
+  const medicineLine = language === 'hi'
+    ? `Kripya abhi apni ${promptDrug} ki dawai lijiye.`
+    : `Please take your ${promptDrug} medicine now.`;
+
+  logger.info('[WEBHOOK] Generated reminder script', { promptDrug, customMessage, language });
+
+  twiml.say({ voice: voiceName, language: voiceLanguage }, medicineLine);
+  twiml.pause({ length: 2 });
+  if (customMessage) {
+    twiml.pause({ length: 2 });
+    twiml.say({ voice: voiceName, language: voiceLanguage }, customMessage);
+  }
+
+  twiml.pause({ length: 2 });
+  twiml.say({ voice: voiceName, language: voiceLanguage }, language === 'hi'
+    ? 'Ab beep ke baad ek dabaiye agar dawai le li hai. Do dabaiye agar nahi li hai.'
+    : 'After the beep, press 1 if you have taken the medicine. Press 2 if you have not taken it.');
+  twiml.pause({ length: 1 });
+
+  const gather = twiml.gather({
+    numDigits: 1,
+    action: '/webhooks/twilio/ivr-response',
+    method: 'POST',
+    timeout: 15,
+    actionOnEmptyResult: true,
+  });
+
+  res.type('text/xml').send(twiml.toString());
 }
+
+export const handleTwilioIvr = handleTwilioVoice;
 
 /**
  * Twilio IVR response — receives DTMF gather results and maps to business logic.

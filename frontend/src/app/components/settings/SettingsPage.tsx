@@ -3,15 +3,17 @@ import { Link } from "react-router-dom";
 import { GuardianContactHub } from "./GuardianContactHub";
 import { MedicalVerificationPortal } from "./MedicalVerificationPortal";
 import { CompanionSoulSettings } from "./CompanionSoulSettings";
+import { PatientNumberSettings } from "./PatientNumberSettings";
 import { SafetyDashboardPanel } from "./SafetyDashboardPanel";
 import { SystemStatusPanel } from "./SystemStatusPanel";
 import { api } from "../../lib/api";
 import type { UserProfile } from "../../lib/api";
 
-type Tab = "contacts" | "medical" | "soul" | "safety" | "status";
+type Tab = "contacts" | "patient" | "medical" | "soul" | "safety" | "status";
 
 const PILLARS: { id: Tab; label: string; icon: string }[] = [
   { id: "contacts", label: "Guardian Contacts", icon: "📞" },
+  { id: "patient", label: "Patient Number", icon: "📱" },
   { id: "medical", label: "Medical Verification", icon: "💊" },
   { id: "soul", label: "Companion Soul", icon: "✨" },
   { id: "safety", label: "Safety & Precaution", icon: "🛡️" },
@@ -42,6 +44,11 @@ export function SettingsPage() {
   const handleContactSave = async (contacts: Array<{name:string;phone:string}>) => {
     await api.updateSettings({ contacts });
     if (profile) setProfile({ ...profile, guardianContacts: contacts });
+  };
+
+  const handlePatientNumberSave = async (patientNumber: string) => {
+    const result = await api.updatePatientNumber({ patientNumber });
+    if (profile) setProfile({ ...profile, patientNumber: result.patientNumber });
   };
 
   const handleMedicalSave = async () => {
@@ -112,6 +119,9 @@ export function SettingsPage() {
         <main className="flex-1 p-6 md:p-10 pb-32">
           {activeTab === "contacts" && (
             <GuardianContactHub initialContacts={profile?.guardianContacts ?? []} onSave={handleContactSave} />
+          )}
+          {activeTab === "patient" && (
+            <PatientNumberSettings patientNumber={profile?.patientNumber ?? null} onSave={handlePatientNumberSave} />
           )}
           {activeTab === "medical" && (
             <MedicalVerificationPortal onSave={handleMedicalSave} />

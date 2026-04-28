@@ -4,12 +4,14 @@ import { logger } from '../../config/logger';
 import { ApiError } from '../../utils/apiError';
 import type { TelephonyProvider, GenerateTwiMLParams } from './telephony.types';
 
-const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
-
 const LANGUAGE_MAP: Record<string, string> = {
   hi: 'hi-IN',
   en: 'en-IN',
 };
+
+function getClient() {
+  return twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
+}
 
 function twilioError(error: unknown): ApiError {
   if (error instanceof Error) {
@@ -32,12 +34,16 @@ function twilioError(error: unknown): ApiError {
 export const twilioClient: TelephonyProvider = {
   async makeCall(params) {
     try {
+      const client = getClient();
+      const url = params.twimlUrl ?? `${env.BACKEND_URL}/webhooks/twilio/voice?drugName=${encodeURIComponent(params.drugName)}${params.scheduleId ? `&scheduleId=${encodeURIComponent(params.scheduleId)}` : ''}`;
+      const statusCallback = params.statusCallback ?? `${env.BACKEND_URL}/webhooks/twilio/status`;
+
       const call = await client.calls.create({
-        url: params.twimlUrl,
+        url,
         to: params.to,
         from: env.TWILIO_PHONE_NUMBER,
-        statusCallback: params.statusCallback,
-        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+        statusCallback,
+        statusCallbackEvent: ['completed', 'no-answer', 'busy', 'failed'],
         statusCallbackMethod: 'POST',
       });
 
@@ -55,6 +61,7 @@ export const twilioClient: TelephonyProvider = {
 
   async sendSms(params) {
     try {
+      const client = getClient();
       await client.messages.create({
         to: params.to,
         from: env.TWILIO_PHONE_NUMBER,
@@ -79,13 +86,12 @@ export const twilioClient: TelephonyProvider = {
         timeout: 5,
         action: params.actionUrl,
         method: 'POST',
+        actionOnEmptyResult: true,
       });
 
       // @ts-expect-error -- hi-IN/en-IN are valid Twilio Polly voices at runtime
       gather.say({ voice: 'Polly.Aditi', language: voiceLanguage }, params.message);
 
-      // If no input (timeout), redirect to same action URL so the handler
-      // receives empty Digits and can mark as missed
       response.redirect({ method: 'POST' }, params.actionUrl);
     } else {
       // @ts-expect-error -- hi-IN/en-IN are valid Twilio Polly voices at runtime

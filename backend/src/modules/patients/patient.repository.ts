@@ -38,6 +38,10 @@ export const patientRepository = {
     if (result.error || !result.data) throw ApiError.internal('Failed to create approved contact');
     return result.data;
   },
+  async deleteContactsByPatientId(patientId: string): Promise<void> {
+    const { error } = await supabase.from('approved_contacts').delete().eq('patient_id', patientId);
+    if (error) throw ApiError.internal('Failed to delete approved contacts');
+  },
   async findContactsByPatientId(patientId: string): Promise<ApprovedContact[]> {
     const { data, error } = await supabase.from('approved_contacts').select('*').eq('patient_id', patientId).order('created_at');
     if (error) throw ApiError.internal('Failed to list approved contacts');
