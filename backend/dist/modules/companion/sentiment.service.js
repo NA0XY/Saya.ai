@@ -42,10 +42,12 @@ exports.sentimentService = {
     async checkAndEscalate(patientId, currentSentiment, contacts, patientName) {
         if (!negativeSentiments.has(currentSentiment))
             return false;
+        if (contacts.length === 0)
+            return false;
         const { data, error } = await supabase_1.supabase.from('companion_messages').select('*').eq('patient_id', patientId).eq('role', 'user').order('created_at', { ascending: false }).limit(2);
         if (error)
             return false;
-        const previousSentiment = ((data ?? [])[0]?.sentiment ?? null);
+        const previousSentiment = ((data ?? [])[1]?.sentiment ?? null);
         if (!shouldEscalateForConsecutiveNegativeSentiments(currentSentiment, previousSentiment))
             return false;
         if (await alert_service_1.alertService.hasRecentEmotionalEscalation(patientId))

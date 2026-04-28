@@ -12,4 +12,5 @@ export interface UploadedFile extends Express.Multer.File {
     publicPath: string;
 }
 export declare function handlePrescriptionUpload(req: Request, res: Response, next: NextFunction): void;
+export declare function handleMedicineImageUpload(req: Request, res: Response, next: NextFunction): void;
 //# sourceMappingURL=upload.middleware.d.ts.map

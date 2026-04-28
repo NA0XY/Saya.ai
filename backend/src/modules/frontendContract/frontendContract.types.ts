@@ -13,6 +13,21 @@ export const FrontendOnboardingSchema = z.object({
   language: z.enum(['english', 'hindi'])
 });
 
+export const PatientNumberSchema = z.object({
+  patientNumber: z.string().trim().min(1)
+});
+
+export const GuardianContactSchema = z.object({
+  name: z.string().min(1, 'Contact name is required'),
+  phone: z.string().min(1, 'Contact phone is required')
+});
+
+export const UpdateSettingsSchema = z.object({
+  contacts: z.array(GuardianContactSchema).min(1, 'At least one contact is required').max(5, 'Maximum 5 contacts allowed').optional(),
+  personality: z.enum(['warm', 'formal', 'playful']).optional(),
+  language: z.enum(['english', 'hindi']).optional()
+});
+
 export const HealthVitalsQuerySchema = z.object({
   range: z.enum(['7d', '30d']).optional()
 });
@@ -20,7 +35,8 @@ export const HealthVitalsQuerySchema = z.object({
 export const FrontendScheduleSchema = z.object({
   drugName: z.string().min(1),
   time: z.string().min(1),
-  customMessage: z.string().optional()
+  customMessage: z.string().optional(),
+  timezoneOffsetMinutes: z.number().int().min(-840).max(840).optional()
 });
 
 export const FrontendChatSchema = z.object({
@@ -33,6 +49,9 @@ export const FrontendChatSchema = z.object({
 
 export type GoogleAuthInput = z.infer<typeof GoogleAuthSchema>;
 export type FrontendOnboardingInput = z.infer<typeof FrontendOnboardingSchema>;
+export type PatientNumberInput = z.infer<typeof PatientNumberSchema>;
+export type GuardianContactInput = z.infer<typeof GuardianContactSchema>;
+export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;
 export type HealthVitalsQuery = z.infer<typeof HealthVitalsQuerySchema>;
 export type FrontendScheduleInput = z.infer<typeof FrontendScheduleSchema>;
 export type FrontendChatInput = z.infer<typeof FrontendChatSchema>;
@@ -43,6 +62,8 @@ export interface UserProfileDto {
   email: string;
   onboardingComplete: boolean;
   role: 'caregiver' | 'parent';
+  patientNumber: string | null;
+  guardianContacts?: Array<{ name: string; phone: string }>;
 }
 
 export interface SafetyStatusDto {

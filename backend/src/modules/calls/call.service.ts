@@ -20,35 +20,51 @@ function mapStatus(status: string): CallLog['status'] {
 }
 
 export const callService = {
-  async initiateCall(scheduleId: string, attemptNumber: number): Promise<CallLog> {
-    const schedule = await medicationRepository.findScheduleById(scheduleId);
+  async initiateMedicationCall(params: { scheduleId: string; to: string; drugName: string; attemptNumber?: number }): Promise<CallLog> {
+    const schedule = await medicationRepository.findScheduleById(params.scheduleId);
     if (!schedule) throw ApiError.notFound('Medication schedule');
-    const patient = await patientRepository.findById(schedule.patient_id);
-    if (!patient) throw ApiError.notFound('Patient');
 
-    const twimlUrl = `${env.BACKEND_URL}/webhooks/twilio/ivr?scheduleId=${encodeURIComponent(schedule.id)}&language=${encodeURIComponent(schedule.language)}`;
-    const statusCallback = `${env.BACKEND_URL}/webhooks/twilio/status`;
+    // Avoid extra attempts by cancelling any pending retry jobs before starting a call.
+    await retryService.cancelRetries(schedule.id);
 
     const call = await twilioClient.makeCall({
-      to: patient.phone,
-      twimlUrl,
-      statusCallback,
-      scheduleId: schedule.id,
+      to: params.to,
+      drugName: params.drugName,
+      scheduleId: params.scheduleId,
     });
 
     const log = await medicationRepository.createCallLog({
       schedule_id: schedule.id,
-      patient_id: patient.id,
+      patient_id: schedule.patient_id,
       exotel_call_sid: call.callSid,
       status: 'initiated',
-      attempt_number: attemptNumber,
+      attempt_number: params.attemptNumber ?? 1,
       initiated_at: isoNow(),
       answered_at: null,
       ivr_response: null,
     });
 
-    logger.info('[CALL] Medication reminder initiated', { scheduleId, callSid: call.callSid, attemptNumber });
+    logger.info('[CALL] Medication reminder initiated', {
+      scheduleId: schedule.id,
+      callSid: call.callSid,
+      attemptNumber: params.attemptNumber ?? 1,
+      drugName: params.drugName,
+    });
+
     return log;
+  },
+
+  async initiateCall(scheduleId: string, attemptNumber: number): Promise<CallLog> {
+    const schedule = await medicationRepository.findScheduleById(scheduleId);
+    if (!schedule) throw ApiError.notFound('Medication schedule');
+    const patient = await patientRepository.findById(schedule.patient_id);
+    if (!patient) throw ApiError.notFound('Patient');
+    return callService.initiateMedicationCall({
+      scheduleId: schedule.id,
+      to: patient.phone,
+      drugName: schedule.medicine_name,
+      attemptNumber,
+    });
   },
 
   async handleIvrResponse(payload: IvrWebhookPayload): Promise<void> {
@@ -58,18 +74,50 @@ export const callService = {
       return;
     }
 
+    const digit = payload.Digits === '1' || payload.Digits === '2' ? payload.Digits : null;
+
+    if (log.ivr_response === digit && ['confirmed', 'rejected'].includes(log.status)) {
+      logger.debug('[CALL] Duplicate IVR webhook ignored', { callSid: payload.CallSid, digit: digit ?? '(empty)' });
+      return;
+    }
+
     const schedule = await medicationRepository.findScheduleById(log.schedule_id);
     if (!schedule) throw ApiError.notFound('Medication schedule');
     const patient = await patientRepository.findById(log.patient_id);
     if (!patient) throw ApiError.notFound('Patient');
     const contacts = await patientRepository.findEscalationContacts(patient.id);
 
-    if (payload.Digits === '1') {
+    if (digit === '1') {
       await medicationRepository.updateCallLog(log.id, { status: 'confirmed', ivr_response: '1', answered_at: isoNow() });
       await retryService.cancelRetries(schedule.id);
       await smsService.sendMedicationConfirmedSms(patient.full_name, schedule.medicine_name, contacts, schedule.language);
+    } else if (digit === '2') {
+      const updated = await medicationRepository.updateCallLog(log.id, { status: 'rejected', ivr_response: '2', answered_at: isoNow() });
+      if (contacts.length > 0) {
+        logger.info('[CALL] Sending intentional-refusal SMS to guardians', { scheduleId: log.schedule_id, contactCount: contacts.length });
+        await smsService.sendIntentionalRefusalSms(patient.full_name, schedule.medicine_name, contacts, 'Saya.ai');
+      }
+      // Do not retry when user explicitly rejected via IVR
+    } else if (digit === null) {
+      const updated = await medicationRepository.updateCallLog(log.id, { status: 'no_answer', ivr_response: null, answered_at: null });
+      // Immediate retry if attempts remain
+      if (updated.attempt_number < env.MAX_CALL_RETRIES) {
+        await retryService.cancelRetries(updated.schedule_id);
+        logger.info('[CALL] No input — initiating immediate retry', { scheduleId: updated.schedule_id, nextAttempt: updated.attempt_number + 1 });
+        await callService.initiateCall(updated.schedule_id, updated.attempt_number + 1);
+      } else {
+        // Final attempt exhausted — send final missed SMS/alert
+        await retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+      }
+      return;
     } else {
-      await medicationRepository.updateCallLog(log.id, { status: 'rejected', ivr_response: payload.Digits === '2' ? '2' : null, answered_at: isoNow() });
+      const updated = await medicationRepository.updateCallLog(log.id, { status: 'rejected', ivr_response: digit, answered_at: isoNow() });
+      if (updated.attempt_number < env.MAX_CALL_RETRIES) {
+        logger.info('[CALL] IVR response not recognized — scheduling immediate retry', { scheduleId: updated.schedule_id, nextAttempt: updated.attempt_number + 1 });
+        await callService.initiateCall(updated.schedule_id, updated.attempt_number + 1);
+      } else {
+        await retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+      }
     }
   },
 
@@ -89,13 +137,31 @@ export const callService = {
       return;
     }
 
+    if ((log.status === 'confirmed' || log.status === 'rejected') && status === 'answered') {
+      logger.debug('[CALL] Terminal IVR state preserved', { callSid: payload.CallSid, status: log.status });
+      return;
+    }
+
     const updated = await medicationRepository.updateCallLog(log.id, {
       status,
       answered_at: status === 'answered' ? isoNow() : log.answered_at,
     });
 
     if (status === 'no_answer' || status === 'failed') {
-      await retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+      const schedule = await medicationRepository.findScheduleById(log.schedule_id);
+      const patient = await patientRepository.findById(log.patient_id);
+      if (schedule && patient) {
+        const contacts = await patientRepository.findEscalationContacts(patient.id);
+        if (updated.attempt_number < env.MAX_CALL_RETRIES) {
+          await retryService.cancelRetries(updated.schedule_id);
+          logger.info('[CALL] Call not received — initiating immediate retry', { scheduleId: updated.schedule_id, nextAttempt: updated.attempt_number + 1 });
+          await callService.initiateCall(updated.schedule_id, updated.attempt_number + 1);
+        } else {
+          // Exhausted attempts; final SMS/alert
+          await retryService.scheduleRetry(updated.schedule_id, updated.id, updated.attempt_number);
+        }
+      }
+      return;
     }
   },
 

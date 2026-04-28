@@ -2,9 +2,10 @@ import type { Language } from '../../types/common';
 
 export interface MakeCallParams {
   to: string;
-  twimlUrl: string;
-  statusCallback: string;
-  scheduleId: string;
+  drugName: string;
+  scheduleId?: string;
+  twimlUrl?: string;
+  statusCallback?: string;
 }
 
 export interface SendSmsParams {

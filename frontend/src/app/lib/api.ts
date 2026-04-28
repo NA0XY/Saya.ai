@@ -4,6 +4,7 @@ export type UserProfile = {
   email: string;
   onboardingComplete: boolean;
   role: "caregiver" | "parent";
+  patientNumber?: string | null;
   guardianContacts?: Array<{ name: string; phone: string }>;
   companionTone?: "warm" | "formal" | "playful" | null;
   companionLanguage?: "english" | "hindi" | null;
@@ -21,6 +22,10 @@ export type SettingsPayload = {
   contacts?: Array<{ name: string; phone: string }>;
   personality?: "warm" | "formal" | "playful";
   language?: "english" | "hindi";
+};
+
+export type PatientNumberPayload = {
+  patientNumber: string;
 };
 
 export type MemoryPayload = {
@@ -92,6 +97,39 @@ export type NewsItem = {
   category?: string | null;
 };
 
+export type MedicationScheduleDto = {
+  id: string;
+  patient_id: string;
+  caregiver_id: string;
+  medicine_name: string;
+  scheduled_time: string;
+  custom_message: string | null;
+  language: "hi" | "en";
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CallLogDto = {
+  id: string;
+  schedule_id: string;
+  patient_id: string;
+  exotel_call_sid: string | null;
+  status: "pending" | "initiated" | "answered" | "confirmed" | "rejected" | "no_answer" | "failed";
+  attempt_number: number;
+  initiated_at: string | null;
+  answered_at: string | null;
+  ivr_response: "1" | "2" | null;
+  created_at: string;
+};
+
+export type DashboardSummaryDto = {
+  patients: Array<{ id: string; full_name: string; phone: string; created_at: string; updated_at: string }>;
+  recentAlerts: AlertDto[];
+  activeSchedules: MedicationScheduleDto[];
+  recentCallLogs: CallLogDto[];
+};
+
 type ApiEnvelope<T> = {
   success: boolean;
   data: T;
@@ -117,6 +155,11 @@ export function setAuthToken(token: string) {
 
 export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+export async function startGoogleOAuth(returnTo = "/onboarding"): Promise<string> {
+  const result = await request<{ url: string }>(`/auth/google/start?returnTo=${encodeURIComponent(returnTo)}`);
+  return result.url;
 }
 
 async function requestWithBase<T>(baseUrl: string, path: string, options: RequestInit = {}): Promise<T> {
@@ -173,6 +216,11 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
+  updatePatientNumber: (payload: PatientNumberPayload) => request<{ status: string; patientNumber: string }>("/user/patient-number", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }),
+
   updateMemory: (payload: MemoryPayload) => request<{ status: string }>("/user/memory", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -182,11 +230,25 @@ export const api = {
     method: "POST"
   }),
 
-  safetyStatus: () => request<SafetyStatusDto[]>("/dashboard/safety-status"),
+  safetyStatus: async () => {
+    const result = await request<SafetyStatusDto[] | ApiEnvelope<SafetyStatusDto[]>>("/dashboard/safety-status");
+    return unwrapData(result);
+  },
 
-  alerts: () => request<AlertDto[]>("/dashboard/alerts"),
+  alerts: async () => {
+    const result = await request<AlertDto[] | ApiEnvelope<AlertDto[]>>("/dashboard/alerts");
+    return unwrapData(result);
+  },
 
-  healthVitals: (range: "7d" | "30d" = "7d") => request<HealthVitalsDto>(`/dashboard/health-vitals?range=${range}`),
+  dashboardSummary: async () => {
+    const result = await request<DashboardSummaryDto | ApiEnvelope<DashboardSummaryDto>>("/dashboard");
+    return unwrapData(result);
+  },
+
+  healthVitals: async (range: "7d" | "30d" = "7d") => {
+    const result = await request<HealthVitalsDto | ApiEnvelope<HealthVitalsDto>>(`/dashboard/health-vitals?range=${range}`);
+    return unwrapData(result);
+  },
 
   extractMedicines: (image: File) => {
     const body = new FormData();
@@ -194,7 +256,7 @@ export const api = {
     return request<{ medicines: MedicineDto[] }>("/medications/extract", { method: "POST", body });
   },
 
-  scheduleMedication: (payload: { drugName: string; time: string; customMessage?: string }) =>
+  scheduleMedication: (payload: { drugName: string; time: string; customMessage?: string; timezoneOffsetMinutes?: number }) =>
     request<{ id: string; status: string }>("/medications/schedule", {
       method: "POST",
       body: JSON.stringify(payload)

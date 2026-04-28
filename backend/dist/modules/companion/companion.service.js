@@ -46,7 +46,14 @@ exports.companionService = {
         const memoriesUpdated = await memory_service_1.memoryService.extractAndSaveMemories(patient.id, rawReply);
         const cleanReply = memory_service_1.memoryService.stripControlTags(rawReply);
         const sentiment = await sentiment_service_1.sentimentService.analyzeSentiment(request.message, request.language);
-        await supabase_1.supabase.from('companion_messages').insert([{ patient_id: patient.id, role: 'user', content: request.message, sentiment }, { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }]);
+        const { error: messageInsertError } = await supabase_1.supabase
+            .from('companion_messages')
+            .insert([
+            { patient_id: patient.id, role: 'user', content: request.message, sentiment },
+            { patient_id: patient.id, role: 'assistant', content: cleanReply, sentiment: null }
+        ]);
+        if (messageInsertError)
+            throw apiError_1.ApiError.internal('Failed to store companion messages');
         if (familyAction.hasAction && familyAction.message) {
             const target = contacts[0];
             if (target) {
@@ -54,8 +61,8 @@ exports.companionService = {
                 await alert_service_1.alertService.createAlert({ patient_id: patient.id, caregiver_id: caregiverId, alert_type: 'companion_request', message: familyAction.message });
             }
         }
-        await sentiment_service_1.sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
-        return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated };
+        const escalated = await sentiment_service_1.sentimentService.checkAndEscalate(patient.id, sentiment, contacts, patient.full_name);
+        return { reply: cleanReply, sentiment, memories_updated: memoriesUpdated, escalated };
     },
     async getHistory(patientId, limit = 50) {
         const { data, error } = await supabase_1.supabase.from('companion_messages').select('*').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(limit);

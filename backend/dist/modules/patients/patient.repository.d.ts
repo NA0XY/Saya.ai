@@ -8,6 +8,7 @@ export declare const patientRepository: {
     update(id: string, data: Partial<Patient>): Promise<Patient>;
     delete(id: string): Promise<void>;
     createContact(data: Omit<ApprovedContact, "id" | "created_at">): Promise<ApprovedContact>;
+    deleteContactsByPatientId(patientId: string): Promise<void>;
     findContactsByPatientId(patientId: string): Promise<ApprovedContact[]>;
     findEscalationContacts(patientId: string): Promise<ApprovedContact[]>;
 };
