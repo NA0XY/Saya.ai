@@ -4,12 +4,26 @@ export type UserProfile = {
   email: string;
   onboardingComplete: boolean;
   role: "caregiver" | "parent";
+  guardianContacts?: Array<{ name: string; phone: string }>;
+  companionTone?: "warm" | "formal" | "playful" | null;
+  companionLanguage?: "english" | "hindi" | null;
+  interests?: string[];
 };
 
 export type OnboardingPayload = {
   contacts: Array<{ name: string; phone: string }>;
   personality: "warm" | "formal" | "playful";
   language: "english" | "hindi";
+};
+
+export type SettingsPayload = {
+  contacts?: Array<{ name: string; phone: string }>;
+  personality?: "warm" | "formal" | "playful";
+  language?: "english" | "hindi";
+};
+
+export type MemoryPayload = {
+  interests: string[];
 };
 
 export type SafetyStatusDto = {
@@ -97,6 +111,20 @@ export const api = {
     body: JSON.stringify(payload)
   }),
 
+  updateSettings: (payload: SettingsPayload) => request<{ status: string }>("/user/settings", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  }),
+
+  updateMemory: (payload: MemoryPayload) => request<{ status: string }>("/user/memory", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
+
+  triggerTestCall: () => request<{ status: string; callId?: string }>("/calls/test", {
+    method: "POST"
+  }),
+
   safetyStatus: () => request<SafetyStatusDto[]>("/dashboard/safety-status"),
 
   alerts: () => request<AlertDto[]>("/dashboard/alerts"),
@@ -121,3 +149,4 @@ export const api = {
       body: JSON.stringify(payload)
     })
 };
+

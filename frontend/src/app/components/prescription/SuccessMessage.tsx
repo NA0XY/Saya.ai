@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 export function SuccessMessage() {
   return (
@@ -47,3 +47,4 @@ export function SuccessMessage() {
     </div>
   );
 }
+

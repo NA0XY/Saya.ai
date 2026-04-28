@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link } from "react-router-dom";
 
 export function CTASection() {
   return (
@@ -55,3 +55,4 @@ export function CTASection() {
     </section>
   );
 }
+

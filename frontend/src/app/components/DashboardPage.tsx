@@ -7,6 +7,7 @@ import { MedicationScheduler } from "./dashboard/MedicationScheduler";
 import { UpcomingCalls } from "./dashboard/UpcomingCalls";
 import { LiveCallDemo } from "./dashboard/LiveCallDemo";
 import { AlertFeed } from "./dashboard/AlertFeed";
+import { SetupGuideBanner } from "./settings/SetupGuideBanner";
 import { api, type AlertDto, type HealthVitalsDto, type SafetyStatusDto, type UserProfile } from "../lib/api";
 
 export function DashboardPage() {
@@ -18,6 +19,7 @@ export function DashboardPage() {
   const [vitals, setVitals] = useState<HealthVitalsDto | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(true);
+  const [setupDismissed, setSetupDismissed] = useState(false);
 
   // Initialize smooth scroll
   useLenisScroll();
@@ -106,13 +108,21 @@ export function DashboardPage() {
       </div>
 
       <div className="navbar">
-        <DashboardNav />
+        <DashboardNav onSettingsOpen={() => setSettingsOpen(true)} />
       </div>
 
       <div id="smooth-content" className="dots-wrapper relative z-10">
         <div data-speed="0.5" className="dots-container"></div>
         
         <main className="main-wrapper py-8 px-4 md:px-6 lg:px-8">
+
+              {/* Setup Guide Banner - shown when config is incomplete */}
+              {!setupDismissed && (!profile?.companionTone || !profile?.guardianContacts?.length) && (
+                <SetupGuideBanner
+                  onOpenSettings={() => setSettingsOpen(true)}
+                  onDismiss={() => setSetupDismissed(true)}
+                />
+              )}
               
               {/* Patient Profile Header - Improved Visual Hierarchy */}
               <div className="dashboard-card-wrapper mb-12 max-w-full">
@@ -148,14 +158,6 @@ export function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-3 md:flex-col flex-shrink-0">
-                    <button className="w-12 h-12 rounded-xl bg-[#F5F1EA] flex items-center justify-center text-[#83311A] hover:bg-[#E85D2A] hover:text-white transition-all shadow-md text-xl hover:shadow-lg transform hover:-translate-y-0.5">
-                      📞
-                    </button>
-                    <button className="w-12 h-12 rounded-xl bg-[#F5F1EA] flex items-center justify-center text-[#83311A] hover:bg-[#E85D2A] hover:text-white transition-all shadow-md text-xl hover:shadow-lg transform hover:-translate-y-0.5">
-                      ⚙️
-                    </button>
                   </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { DottedBackground } from "../DottedBackground";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
@@ -280,3 +280,4 @@ export function CompanionInterface() {
     </div>
   );
 }
+

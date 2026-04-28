@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { api } from "../lib/api";
 
@@ -19,7 +19,7 @@ export function AuthPage() {
     setAuthError(null);
     try {
       const result = await api.authenticateWithGoogle(token);
-      navigate(result.user.onboardingComplete ? "/dashboard" : "/onboarding");
+      navigate("/dashboard");
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Google sign-in failed");
     } finally {
@@ -28,7 +28,7 @@ export function AuthPage() {
   };
 
   const handleGuest = () => {
-    navigate("/onboarding");
+    navigate("/dashboard");
   };
 
   return (
@@ -170,4 +170,5 @@ export function AuthPage() {
     </div>
   );
 }
+
 
