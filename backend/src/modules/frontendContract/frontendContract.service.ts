@@ -266,7 +266,9 @@ export const frontendContractService = {
   async chat(input: FrontendChatInput, caregiverId: string): Promise<CompanionChatDto> {
     const patientId = await getPrimaryPatientId(caregiverId);
     await patientService.assertCaregiverOwnsPatient(patientId, caregiverId);
-    const response = await companionService.chat({ patient_id: patientId, message: input.message, language: 'en' }, caregiverId);
+    const patient = await patientRepository.findById(patientId);
+    const language = patient?.language_preference ?? 'en';
+    const response = await companionService.chat({ patient_id: patientId, message: input.message, language }, caregiverId);
     return { response: response.reply, mood: toMood(response.sentiment), actions: [] };
   }
 };
