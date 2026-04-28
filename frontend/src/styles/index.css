@@ -119,3 +119,79 @@ body {
 /* ===== Selection Colors ===== */
 ::selection { background-color: #f93f12; color: #ffffff; }
 ::-moz-selection { background-color: #f93f12; color: #ffffff; }
+
+/* ================================================================
+   SKETCH-PEN DESIGN SYSTEM
+   Hand-drawn aesthetic for Settings module
+   ================================================================ */
+
+/* ── Font Utilities ── */
+.font-sketch {
+  font-family: 'Caveat', cursive !important;
+}
+.font-dm-sans {
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+/* ── Core Sketch Container ── */
+.sketch-box {
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  filter: url(#rough);
+  position: relative;
+}
+
+/* ── Sketch Dot (status indicators) ── */
+.sketch-dot {
+  border-radius: 50%;
+  filter: url(#rough);
+}
+
+/* ── Sketch Underline ── */
+.sketch-underline {
+  height: 2px;
+  border-bottom: 2px solid currentColor;
+  filter: url(#rough);
+}
+
+/* ── Sketch Shadow (subtle hand-drawn lift) ── */
+.sketch-shadow {
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Sketch Avatar (circular with rough edges) ── */
+.sketch-avatar {
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  filter: url(#rough);
+}
+
+/* ── Sketch Toggle ── */
+.sketch-toggle-track {
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  filter: url(#rough);
+}
+.sketch-toggle-thumb {
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  filter: url(#rough);
+}
+
+/* ── Fade-in Animation ── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+/* ── Hide Scrollbar Utility ── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
