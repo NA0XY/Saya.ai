@@ -29,6 +29,13 @@ exports.newsService = {
         }
         if (error)
             throw apiError_1.ApiError.internal('Failed to load news');
+        if (!data || data.length === 0) {
+            // Fallback: serve latest cached headlines even if today's refresh returned no rows.
+            const fallback = await supabase_1.supabase.from('news_cache').select('*').order('fetched_at', { ascending: false }).limit(limit);
+            if (fallback.error)
+                throw apiError_1.ApiError.internal('Failed to load fallback news');
+            data = fallback.data;
+        }
         return data ?? [];
     }
 };

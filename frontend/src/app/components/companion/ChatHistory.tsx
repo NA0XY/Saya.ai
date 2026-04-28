@@ -9,6 +9,13 @@ export type ChatMessage = {
   content: string;
   sentiment?: SentimentTag;
   timestamp: Date | string;
+  input_source?: "voice" | "text";
+  turn_metrics?: {
+    capture_ms?: number;
+    stt_ms?: number;
+    first_token_ms?: number;
+    tts_first_byte_ms?: number;
+  };
 };
 
 type ChatHistoryProps = {

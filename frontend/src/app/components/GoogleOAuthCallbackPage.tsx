@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { api, setAuthToken } from "../lib/api";
+import { useNavigate } from "react-router-dom";
+import { setAuthToken } from "../lib/api";
 
 export function GoogleOAuthCallbackPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     async function handleCallback() {
@@ -14,37 +12,31 @@ export function GoogleOAuthCallbackPage() {
         // Get the token from URL hash (set by backend)
         const hash = new URLSearchParams(window.location.hash.slice(1));
         const token = hash.get("token");
-        const onboarding = hash.get("onboarding");
         const callbackError = hash.get("error");
         const returnTo = hash.get("returnTo");
 
         if (callbackError) {
           setError(`Authentication failed: ${callbackError}`);
-          setIsProcessing(false);
           return;
         }
 
         if (!token) {
           setError("No authentication token received");
-          setIsProcessing(false);
           return;
         }
 
         // Store token
         setAuthToken(token);
 
-        // Redirect based on onboarding status
+        // Redirect to a safe in-app path.
         const destination =
           returnTo && returnTo.startsWith("/")
             ? returnTo
-            : onboarding === "1"
-              ? "/dashboard"
-              : "/onboarding";
+            : "/dashboard";
 
         navigate(destination);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Callback processing failed");
-        setIsProcessing(false);
       }
     }
 
