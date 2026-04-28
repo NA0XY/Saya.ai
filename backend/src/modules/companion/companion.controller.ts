@@ -11,6 +11,7 @@ import { companionService } from './companion.service';
 import type { ChatRequest, TtsStreamRequest } from './companion.types';
 import { memoryService } from './memory.service';
 import { companionTtsService } from './companionTts.service';
+import { companionSttService } from './companionStt.service';
 
 async function getPrimaryPatientIdForCaregiver(caregiverId: string): Promise<string | null> {
   const patients = await patientRepository.findByCaregiverId(caregiverId);
@@ -43,6 +44,33 @@ export const companionController = {
     const response = await companionService.chat(req.body, req.user!.id);
     res.json(successResponse(response));
   }),
+  streamChat: asyncHandler(async (req: Request<object, object, ChatRequest>, res: Response) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const emit = (event: 'assistant_token' | 'assistant_done' | 'assistant_error', payload: unknown) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    };
+
+    const heartbeat = setInterval(() => {
+      res.write(':keepalive\n\n');
+    }, 15000);
+
+    try {
+      await companionService.chatStream(req.body, req.user!.id, emit);
+      res.end();
+    } catch (error) {
+      emit('assistant_error', {
+        message: error instanceof Error ? error.message : 'Companion stream failed'
+      });
+      res.end();
+    } finally {
+      clearInterval(heartbeat);
+    }
+  }),
   getPatientContext: asyncHandler(async (req: Request, res: Response) => {
     const patientId = await getPrimaryPatientIdForCaregiver(req.user!.id);
     res.json(successResponse({ patient_id: patientId }));
@@ -71,6 +99,13 @@ export const companionController = {
       }
     }
     res.end();
+  }),
+  transcribeSpeech: asyncHandler(async (req: Request<{ patientId: string }, object, { language?: 'hi' | 'en' }>, res: Response) => {
+    await patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user!.id);
+    if (!req.file?.buffer) throw ApiError.badRequest('Audio file is required');
+    const language = req.body.language === 'hi' ? 'hi' : 'en';
+    const transcription = await companionSttService.transcribeAudio(req.file.buffer, req.file.mimetype ?? 'audio/webm', language);
+    res.json(successResponse(transcription));
   }),
   getMemories: asyncHandler(async (req: Request<{ patientId: string }>, res: Response) => {
     await patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user!.id);

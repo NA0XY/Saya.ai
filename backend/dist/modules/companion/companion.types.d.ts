@@ -13,6 +13,10 @@ export interface ChatResponse {
     sentiment: SentimentTag;
     memories_updated: boolean;
     escalated?: boolean;
+    latency_ms?: {
+        chat_total_ms?: number;
+        chat_first_token_ms?: number;
+    };
 }
 export type CompanionTone = 'warm' | 'formal' | 'playful';
 export type VoiceSpeed = 'slow' | 'medium' | 'fast';
@@ -27,6 +31,15 @@ export interface TtsStreamResult {
     audio: Buffer;
     contentType: 'audio/mpeg' | 'audio/wav';
     provider: 'google' | 'piper-http' | 'piper-cli';
+}
+export interface SttTranscriptionRequest {
+    language?: Language;
+}
+export interface SttTranscriptionResponse {
+    transcript: string;
+    language: Language;
+    provider: 'groq-whisper';
+    duration_ms: number;
 }
 export interface MemoryEntry {
     key: string;

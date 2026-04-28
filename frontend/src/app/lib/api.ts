@@ -47,6 +47,17 @@ export type CompanionChatResponse = {
   sentiment: "joy" | "neutral" | "anxiety" | "sadness";
   memories_updated: boolean;
   escalated?: boolean;
+  latency_ms?: {
+    chat_total_ms?: number;
+    chat_first_token_ms?: number;
+  };
+};
+
+export type CompanionSttResponse = {
+  transcript: string;
+  language: "hi" | "en";
+  provider: "groq-whisper";
+  duration_ms: number;
 };
 
 export type CompanionTtsRequest = {
@@ -56,6 +67,11 @@ export type CompanionTtsRequest = {
   tone?: "warm" | "formal" | "playful";
   voiceSpeed?: "slow" | "medium" | "fast";
 };
+
+export type CompanionStreamEvent =
+  | { type: "assistant_token"; token: string }
+  | { type: "assistant_done"; data: CompanionChatResponse }
+  | { type: "assistant_error"; message: string };
 
 export type CompanionHistoryMessage = {
   id: string;
@@ -207,6 +223,65 @@ export const api = {
     return unwrapData(result);
   },
 
+  streamCompanionChat: async (
+    payload: { patient_id: string; message: string; language: "hi" | "en" },
+    onEvent: (event: CompanionStreamEvent) => void
+  ): Promise<CompanionChatResponse> => {
+    const token = getAuthToken();
+    const headers = new Headers({ "Content-Type": "application/json" });
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const response = await fetch(`${COMPANION_API_BASE_URL}/companion/chat/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok || !response.body) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.message ?? `Request failed with ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResponse: CompanionChatResponse | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+
+      for (const frame of frames) {
+        const lines = frame.split("\n").map((line) => line.trim()).filter(Boolean);
+        const eventLine = lines.find((line) => line.startsWith("event:"));
+        const dataLine = lines.find((line) => line.startsWith("data:"));
+        if (!eventLine || !dataLine) continue;
+        const event = eventLine.replace(/^event:\s*/, "");
+        const data = dataLine.replace(/^data:\s*/, "");
+        const parsed = JSON.parse(data) as unknown;
+
+        if (event === "assistant_token") {
+          const tokenPayload = parsed as { token?: string };
+          if (tokenPayload.token) onEvent({ type: "assistant_token", token: tokenPayload.token });
+        } else if (event === "assistant_done") {
+          finalResponse = parsed as CompanionChatResponse;
+          onEvent({ type: "assistant_done", data: finalResponse });
+        } else if (event === "assistant_error") {
+          const errorPayload = parsed as { message?: string };
+          onEvent({ type: "assistant_error", message: errorPayload.message ?? "Companion stream failed" });
+          throw new Error(errorPayload.message ?? "Companion stream failed");
+        }
+      }
+    }
+
+    if (!finalResponse) {
+      throw new Error("Companion stream ended before final response");
+    }
+    return finalResponse;
+  },
+
   getCompanionPatientContext: async () => {
     const result = await companionRequest<CompanionPatientContext | ApiEnvelope<CompanionPatientContext>>("/companion/patient");
     return unwrapData(result);
@@ -217,6 +292,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  transcribeCompanionAudio: async (patientId: string, audio: Blob, language: "hi" | "en") => {
+    const body = new FormData();
+    body.append("audio", audio, "utterance.webm");
+    body.append("language", language);
+    const result = await companionRequest<CompanionSttResponse | ApiEnvelope<CompanionSttResponse>>(
+      `/companion/stt/${patientId}`,
+      { method: "POST", body }
+    );
+    return unwrapData(result);
+  },
 
   getCompanionHistory: async (patientId: string) => {
     const result = await companionRequest<CompanionHistoryMessage[] | ApiEnvelope<CompanionHistoryMessage[]>>(`/companion/history/${patientId}`);

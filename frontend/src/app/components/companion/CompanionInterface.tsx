@@ -5,14 +5,28 @@ import { DottedBackground } from "../DottedBackground";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
 import { QuickActions } from "./QuickActions";
-import { api, type CompanionHistoryMessage, type CompanionChatResponse, type NewsItem, type PatientMemory } from "../../lib/api";
+import {
+  api,
+  type CompanionHistoryMessage,
+  type CompanionChatResponse,
+  type CompanionStreamEvent,
+  type NewsItem,
+  type PatientMemory
+} from "../../lib/api";
 import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
 import { NewsTicker } from "./NewsTicker";
 import { ChatHistory, type ChatMessage, type SentimentTag } from "./ChatHistory";
 
-type VoiceState = "idle" | "listening" | "processing";
+type VoiceState = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
 type InputLanguage = "en" | "hi";
 type TonePreference = "warm" | "formal" | "playful";
+type LatencyMetrics = {
+  stt_ms?: number;
+  chat_first_token_ms?: number;
+  chat_total_ms?: number;
+  tts_first_audio_ms?: number;
+  tts_total_ms?: number;
+};
 
 const LANGUAGE_STORAGE_KEY = "saya_language_preference";
 const VOICE_SPEED_STORAGE_KEY = "saya_voice_speed";
@@ -22,7 +36,7 @@ const TONE_STORAGE_KEY = "saya_companion_tone";
 
 function sentimentToMood(sentiment: SentimentTag, voiceState: VoiceState): MoodType {
   if (voiceState === "listening") return "listening";
-  if (voiceState === "processing") return "thinking";
+  if (voiceState === "transcribing" || voiceState === "thinking") return "thinking";
   switch (sentiment) {
     case "joy":
       return "happy";
@@ -92,6 +106,12 @@ export function CompanionInterface() {
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const audioQueueRef = useRef<string[]>([]);
   const isAudioPlayingRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const capturedAudioRef = useRef<Blob | null>(null);
+  const utteranceHandledRef = useRef(false);
+  const recordingStopWaitRef = useRef<Promise<void> | null>(null);
 
   const [patientId, setPatientId] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -135,6 +155,7 @@ export function CompanionInterface() {
   const [textInput, setTextInput] = useState("");
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [latencyMetrics, setLatencyMetrics] = useState<LatencyMetrics>({});
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [memoriesError, setMemoriesError] = useState<string | null>(null);
   const [newsError, setNewsError] = useState<string | null>(null);
@@ -168,12 +189,60 @@ export function CompanionInterface() {
     }
   };
 
+  const stopRecordingCapture = async (): Promise<void> => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recordingStopWaitRef.current = new Promise<void>((resolve) => {
+        recorder.addEventListener("stop", () => resolve(), { once: true });
+      });
+      recorder.stop();
+      await recordingStopWaitRef.current.catch(() => undefined);
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    mediaRecorderRef.current = null;
+  };
+
+  const startRecordingCapture = async () => {
+    capturedAudioRef.current = null;
+    audioChunksRef.current = [];
+    if (typeof window === "undefined" || !(window as any).MediaRecorder || !navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onstop = () => {
+        if (audioChunksRef.current.length > 0) {
+          capturedAudioRef.current = new Blob(audioChunksRef.current, {
+            type: recorder.mimeType || "audio/webm"
+          });
+        }
+      };
+      recorder.start();
+    } catch {
+      // If capture fails, browser STT can still proceed.
+    }
+  };
+
   const fallbackSpeakInBrowser = (text: string, sentiment: SentimentTag) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    setVoiceState("speaking");
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
     utterance.rate = voiceSpeed === "slow" ? 0.9 : voiceSpeed === "fast" ? 1.1 : 1.0;
     utterance.pitch = sentiment === "joy" ? 1.15 : sentiment === "sadness" ? 0.9 : 1.0;
+    utterance.onend = () => setVoiceState("idle");
+    utterance.onerror = () => setVoiceState("idle");
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   };
@@ -183,6 +252,7 @@ export function CompanionInterface() {
     if (!nextUrl) {
       isAudioPlayingRef.current = false;
       setIsReplySpeaking(false);
+      setVoiceState("idle");
       return;
     }
 
@@ -192,6 +262,7 @@ export function CompanionInterface() {
     const player = audioElementRef.current;
     isAudioPlayingRef.current = true;
     setIsReplySpeaking(true);
+    setVoiceState("speaking");
     player.src = nextUrl;
     player.playbackRate = voiceSpeed === "slow" ? 0.9 : voiceSpeed === "fast" ? 1.1 : 1.0;
     void player.play().catch(() => {
@@ -212,6 +283,7 @@ export function CompanionInterface() {
   const playAssistantSpeech = async (text: string, sentiment: SentimentTag, targetPatientId?: string) => {
     const effectivePatientId = targetPatientId ?? patientId;
     if (!effectivePatientId) return;
+    const ttsStartedAt = performance.now();
     try {
       const response = await api.streamCompanionSpeech(effectivePatientId, {
         text,
@@ -228,11 +300,23 @@ export function CompanionInterface() {
 
       const reader = response.body.getReader();
       const chunks: Uint8Array[] = [];
+      let firstChunkAt: number | null = null;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        if (value) chunks.push(value);
+        if (value) {
+          chunks.push(value);
+          if (!firstChunkAt) {
+            firstChunkAt = performance.now();
+          }
+        }
       }
+
+      setLatencyMetrics((prev) => ({
+        ...prev,
+        tts_first_audio_ms: firstChunkAt ? Math.round(firstChunkAt - ttsStartedAt) : prev.tts_first_audio_ms,
+        tts_total_ms: Math.round(performance.now() - ttsStartedAt)
+      }));
 
       const audioBlob = new Blob(chunks, { type: contentType.includes("wav") ? "audio/wav" : "audio/mpeg" });
       const audioUrl = URL.createObjectURL(audioBlob);
@@ -242,6 +326,7 @@ export function CompanionInterface() {
       }
     } catch {
       fallbackSpeakInBrowser(text, sentiment);
+      setVoiceState("idle");
     }
   };
 
@@ -328,24 +413,85 @@ export function CompanionInterface() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setApiError(null);
+    setVoiceState("thinking");
+
+    const assistantMessageId = `assistant-stream-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    let streamedReply = "";
+    const chatStartedAt = performance.now();
+    let hasFirstToken = false;
+
+    const ensureAssistantPlaceholder = () => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+        },
+      ]);
+    };
+
+    const applyStreamEvent = (event: CompanionStreamEvent) => {
+      if (event.type === "assistant_token") {
+        if (!hasFirstToken) {
+          hasFirstToken = true;
+          setLatencyMetrics((prev) => ({
+            ...prev,
+            chat_first_token_ms: Math.round(performance.now() - chatStartedAt),
+          }));
+        }
+        streamedReply = `${streamedReply}${event.token}`;
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantMessageId ? { ...message, content: streamedReply } : message
+          )
+        );
+      }
+    };
 
     try {
-      const result: CompanionChatResponse = await api.companionChat({
-        patient_id: activePatientId,
-        message: userInput,
-        language: inputLanguage,
-      });
+      ensureAssistantPlaceholder();
+      let result: CompanionChatResponse;
+      try {
+        result = await api.streamCompanionChat(
+          {
+            patient_id: activePatientId,
+            message: userInput,
+            language: inputLanguage,
+          },
+          applyStreamEvent
+        );
+      } catch {
+        const fallbackResult = await api.companionChat({
+          patient_id: activePatientId,
+          message: userInput,
+          language: inputLanguage,
+        });
+        streamedReply = fallbackResult.reply;
+        result = fallbackResult;
+      }
 
-      const assistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        role: "assistant",
-        content: result.reply,
-        sentiment: result.sentiment,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      const finalReply = (streamedReply || result.reply).trim();
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === assistantMessageId
+            ? {
+                ...message,
+                content: finalReply,
+                sentiment: result.sentiment,
+                timestamp: new Date(),
+              }
+            : message
+        )
+      );
       setCurrentSentiment(result.sentiment);
-      void playAssistantSpeech(result.reply, result.sentiment, activePatientId);
+      setLatencyMetrics((prev) => ({
+        ...prev,
+        chat_total_ms: Math.round(performance.now() - chatStartedAt),
+        chat_first_token_ms: result.latency_ms?.chat_first_token_ms ?? prev.chat_first_token_ms,
+      }));
+      void playAssistantSpeech(finalReply, result.sentiment, activePatientId);
 
       if (result.memories_updated) {
         await loadMemories(activePatientId);
@@ -363,6 +509,7 @@ export function CompanionInterface() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Companion backend unavailable";
       setApiError(message);
+      setMessages((prev) => prev.filter((item) => item.id !== assistantMessageId));
       setMessages((prev) => [
         ...prev,
         {
@@ -374,7 +521,7 @@ export function CompanionInterface() {
         },
       ]);
     } finally {
-      setVoiceState("idle");
+      if (!isAudioPlayingRef.current) setVoiceState("idle");
     }
   };
 
@@ -433,16 +580,17 @@ export function CompanionInterface() {
 
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognitionInstance = new SpeechRecognition();
-    recognitionInstance.continuous = true;
+    recognitionInstance.continuous = false;
     recognitionInstance.interimResults = true;
     recognitionInstance.maxAlternatives = 3;
-    recognitionInstance.lang = inputLanguage === "hi" ? "hi-IN" : "en-US";
+    recognitionInstance.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
 
     recognitionInstance.onstart = () => {
       setVoiceState("listening");
       setInterimTranscript("");
       setLiveTranscript("");
       finalTranscriptRef.current = "";
+      utteranceHandledRef.current = false;
       setPermissionError(null);
     };
 
@@ -464,29 +612,61 @@ export function CompanionInterface() {
     };
 
     recognitionInstance.onend = () => {
+      void (async () => {
+        await stopRecordingCapture();
+
       if (maxSpeechTimerRef.current !== null) {
         window.clearTimeout(maxSpeechTimerRef.current);
         maxSpeechTimerRef.current = null;
       }
 
       const finalTranscript = finalTranscriptRef.current.trim();
-      if (!finalTranscript) {
-        setLiveTranscript("");
-        setVoiceState("idle");
+      if (finalTranscript && !utteranceHandledRef.current) {
+        utteranceHandledRef.current = true;
+        setVoiceState("transcribing");
+        if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+        debounceRef.current = window.setTimeout(() => {
+          setLiveTranscript("");
+          finalTranscriptRef.current = "";
+          void handleResponse(finalTranscript);
+        }, 300);
         return;
       }
 
-      setVoiceState("processing");
-      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
-      debounceRef.current = window.setTimeout(() => {
+      if (!finalTranscript && !utteranceHandledRef.current && capturedAudioRef.current && patientId) {
+        setVoiceState("transcribing");
+        try {
+          const sttStartedAt = performance.now();
+          const stt = await api.transcribeCompanionAudio(patientId, capturedAudioRef.current, inputLanguage);
+          setLatencyMetrics((prev) => ({
+            ...prev,
+            stt_ms: Math.round(performance.now() - sttStartedAt),
+          }));
+          if (stt.transcript.trim()) {
+            utteranceHandledRef.current = true;
+            finalTranscriptRef.current = "";
+            setLiveTranscript(stt.transcript.trim());
+            void handleResponse(stt.transcript.trim());
+            return;
+          }
+        } catch {
+          // falls through to visible hint.
+        }
+      }
+
+      if (!utteranceHandledRef.current) {
         setLiveTranscript("");
+        setInterimTranscript("");
         finalTranscriptRef.current = "";
-        void handleResponse(finalTranscript);
-      }, 300);
+        setPermissionError("I couldn't capture voice clearly. Please try again.");
+        setVoiceState("idle");
+      }
+      })();
     };
 
     recognitionInstance.onerror = (event: any) => {
       clearSpeechTimers();
+      void stopRecordingCapture();
       setVoiceState("idle");
       if (event.error === "not-allowed") {
         setPermissionError("Please allow microphone access to talk to your companion.");
@@ -509,6 +689,7 @@ export function CompanionInterface() {
 
     return () => {
       clearSpeechTimers();
+      void stopRecordingCapture();
       recognitionInstance.onstart = null;
       recognitionInstance.onresult = null;
       recognitionInstance.onend = null;
@@ -520,13 +701,14 @@ export function CompanionInterface() {
   useEffect(() => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, inputLanguage);
     if (recognitionRef.current) {
-      recognitionRef.current.lang = inputLanguage === "hi" ? "hi-IN" : "en-US";
+      recognitionRef.current.lang = inputLanguage === "hi" ? "hi-IN" : "en-IN";
     }
   }, [inputLanguage]);
 
   useEffect(() => {
     return () => {
       if (escalationTimeoutRef.current !== null) window.clearTimeout(escalationTimeoutRef.current);
+      void stopRecordingCapture();
       if (audioElementRef.current) {
         audioElementRef.current.pause();
         audioElementRef.current.src = "";
@@ -542,20 +724,23 @@ export function CompanionInterface() {
 
   const handleVoiceClick = () => {
     if (voiceState !== "idle" || !recognitionRef.current) return;
-    try {
-      recognitionRef.current.start();
-      maxSpeechTimerRef.current = window.setTimeout(() => {
-        recognitionRef.current?.stop();
-      }, 45000);
-    } catch {
-      setPermissionError("Voice not available. You can type instead.");
-      setShowTextInput(true);
-    }
+    void (async () => {
+      try {
+        await startRecordingCapture();
+        recognitionRef.current.start();
+        maxSpeechTimerRef.current = window.setTimeout(() => {
+          recognitionRef.current?.stop();
+        }, 45000);
+      } catch {
+        setPermissionError("Voice not available. You can type instead.");
+        setShowTextInput(true);
+      }
+    })();
   };
 
   const handleTextSubmit = () => {
     if (!textInput.trim()) return;
-    setVoiceState("processing");
+    setVoiceState("thinking");
     const content = textInput.trim();
     setTextInput("");
     void handleResponse(content);
@@ -734,6 +919,18 @@ export function CompanionInterface() {
               {apiError && (
                 <div className="bg-orange-50 border-2 border-[#E85D2A]/40 rounded-2xl px-6 py-4 shadow-sm">
                   <p className="text-sm text-center text-[#83311A] font-semibold">{apiError}</p>
+                </div>
+              )}
+              {import.meta.env.DEV && (
+                <div className="rounded-2xl border border-[#E85D2A]/20 bg-white/90 px-4 py-3 text-sm font-semibold text-[#2A2B3D] transition-all duration-300">
+                  <div className="uppercase tracking-wider text-[#83311A] text-sm">Latency (dev)</div>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <span>STT: {latencyMetrics.stt_ms ?? "-"}ms</span>
+                    <span>1st Token: {latencyMetrics.chat_first_token_ms ?? "-"}ms</span>
+                    <span>Chat: {latencyMetrics.chat_total_ms ?? "-"}ms</span>
+                    <span>TTS 1st Byte: {latencyMetrics.tts_first_audio_ms ?? "-"}ms</span>
+                    <span>TTS Total: {latencyMetrics.tts_total_ms ?? "-"}ms</span>
+                  </div>
                 </div>
               )}
               {(loadingHistory || Boolean(historyError) || messages.length > 0) && (

@@ -1,6 +1,6 @@
 import { Mic, Loader2 } from "lucide-react";
 
-type VoiceState = "idle" | "listening" | "processing";
+type VoiceState = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
 type InputLanguage = "en" | "hi";
 
 type VoiceButtonProps = {
@@ -11,6 +11,18 @@ type VoiceButtonProps = {
 };
 
 export function VoiceButton({ state, language, onClick, onLanguageChange }: VoiceButtonProps) {
+  const isProcessing = state === "transcribing" || state === "thinking" || state === "speaking";
+  const stateLabel =
+    state === "idle"
+      ? "Speak"
+      : state === "listening"
+      ? "Listening"
+      : state === "transcribing"
+      ? "Transcribing"
+      : state === "thinking"
+      ? "Thinking"
+      : "Speaking";
+
   // Waveform bars on the left and right
   const renderWaveform = (side: "left" | "right") => {
     const isListening = state === "listening";
@@ -49,7 +61,7 @@ export function VoiceButton({ state, language, onClick, onLanguageChange }: Voic
       
       <button
         onClick={onClick}
-        aria-label={state === "idle" ? "Start voice input" : state === "listening" ? "Listening" : "Processing voice input"}
+        aria-label={state === "idle" ? "Start voice input" : `${stateLabel} in progress`}
         disabled={state !== "idle"}
         className={`relative w-32 h-32 rounded-full transition-all duration-300 flex items-center justify-center z-10
           ${
@@ -57,7 +69,7 @@ export function VoiceButton({ state, language, onClick, onLanguageChange }: Voic
               ? "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] shadow-[0_15px_30px_rgba(232,93,42,0.4),inset_0_4px_10px_rgba(255,255,255,0.5),inset_0_-4px_10px_rgba(0,0,0,0.15)] hover:scale-105 active:scale-95 cursor-pointer hover:shadow-[0_20px_40px_rgba(232,93,42,0.5),inset_0_6px_12px_rgba(255,255,255,0.6),inset_0_-4px_10px_rgba(0,0,0,0.15)]"
               : state === "listening"
               ? "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] scale-105 shadow-[0_0_40px_rgba(232,93,42,0.6),inset_0_4px_10px_rgba(255,255,255,0.5),inset_0_-4px_10px_rgba(0,0,0,0.15)]"
-              : "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] opacity-80 shadow-none"
+              : "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] opacity-85 shadow-none"
           } disabled:cursor-not-allowed`}
       >
         {state === "idle" && (
@@ -74,8 +86,11 @@ export function VoiceButton({ state, language, onClick, onLanguageChange }: Voic
           </div>
         )}
 
-        {state === "processing" && (
-          <Loader2 className="w-10 h-10 text-white animate-spin" />
+        {isProcessing && (
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-10 h-10 text-white animate-spin" />
+            <span className="text-white text-sm font-extrabold uppercase tracking-widest">{stateLabel}</span>
+          </div>
         )}
       </button>
 

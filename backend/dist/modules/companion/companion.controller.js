@@ -12,6 +12,7 @@ const patient_service_1 = require("../patients/patient.service");
 const companion_service_1 = require("./companion.service");
 const memory_service_1 = require("./memory.service");
 const companionTts_service_1 = require("./companionTts.service");
+const companionStt_service_1 = require("./companionStt.service");
 async function getPrimaryPatientIdForCaregiver(caregiverId) {
     const patients = await patient_repository_1.patientRepository.findByCaregiverId(caregiverId);
     const existing = patients[0];
@@ -42,6 +43,32 @@ exports.companionController = {
         const response = await companion_service_1.companionService.chat(req.body, req.user.id);
         res.json((0, apiResponse_1.successResponse)(response));
     }),
+    streamChat: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
+        const emit = (event, payload) => {
+            res.write(`event: ${event}\n`);
+            res.write(`data: ${JSON.stringify(payload)}\n\n`);
+        };
+        const heartbeat = setInterval(() => {
+            res.write(':keepalive\n\n');
+        }, 15000);
+        try {
+            await companion_service_1.companionService.chatStream(req.body, req.user.id, emit);
+            res.end();
+        }
+        catch (error) {
+            emit('assistant_error', {
+                message: error instanceof Error ? error.message : 'Companion stream failed'
+            });
+            res.end();
+        }
+        finally {
+            clearInterval(heartbeat);
+        }
+    }),
     getPatientContext: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
         const patientId = await getPrimaryPatientIdForCaregiver(req.user.id);
         res.json((0, apiResponse_1.successResponse)({ patient_id: patientId }));
@@ -68,6 +95,14 @@ exports.companionController = {
             }
         }
         res.end();
+    }),
+    transcribeSpeech: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+        await patient_service_1.patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user.id);
+        if (!req.file?.buffer)
+            throw apiError_1.ApiError.badRequest('Audio file is required');
+        const language = req.body.language === 'hi' ? 'hi' : 'en';
+        const transcription = await companionStt_service_1.companionSttService.transcribeAudio(req.file.buffer, req.file.mimetype ?? 'audio/webm', language);
+        res.json((0, apiResponse_1.successResponse)(transcription));
     }),
     getMemories: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
         await patient_service_1.patientService.assertCaregiverOwnsPatient(req.params.patientId, req.user.id);

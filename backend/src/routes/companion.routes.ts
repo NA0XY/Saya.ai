@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { companionLimiter } from '../middleware/rateLimit.middleware';
@@ -20,10 +21,18 @@ const PreferenceSchema = z.object({
   tone: z.enum(['warm', 'formal', 'playful']),
   language: z.enum(['hi', 'en'])
 });
+
+const companionAudioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
 export const companionRouter = Router();
 companionRouter.post('/chat', authMiddleware, companionLimiter, validateBody(ChatSchema), companionController.chat);
+companionRouter.post('/chat/stream', authMiddleware, companionLimiter, validateBody(ChatSchema), companionController.streamChat);
 companionRouter.get('/patient', authMiddleware, companionController.getPatientContext);
 companionRouter.post('/tts/:patientId/stream', authMiddleware, validateParams(PatientParamsSchema), validateBody(TtsBodySchema), companionController.streamTts);
+companionRouter.post('/stt/:patientId', authMiddleware, validateParams(PatientParamsSchema), companionAudioUpload.single('audio'), companionController.transcribeSpeech);
 companionRouter.get('/history/:patientId', authMiddleware, validateParams(PatientParamsSchema), companionController.getHistory);
 companionRouter.get('/memories/:patientId', authMiddleware, validateParams(PatientParamsSchema), companionController.getMemories);
 companionRouter.delete('/memories/:patientId/:memoryKey', authMiddleware, validateParams(MemoryParamsSchema), companionController.deleteMemory);

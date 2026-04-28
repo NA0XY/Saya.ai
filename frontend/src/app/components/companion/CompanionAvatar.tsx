@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
 
-type VoiceState = "idle" | "listening" | "processing";
+type VoiceState = "idle" | "listening" | "transcribing" | "thinking" | "speaking";
 
 type CompanionAvatarProps = {
   mood: MoodType;
@@ -100,7 +100,7 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
         </div>
       )}
 
-      {voiceState === "processing" && (
+      {(voiceState === "transcribing" || voiceState === "thinking") && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-2 z-20 bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-gray-100">
           <div className="w-2.5 h-2.5 bg-[#E85D2A] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
           <div className="w-2.5 h-2.5 bg-[#E85D2A] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
