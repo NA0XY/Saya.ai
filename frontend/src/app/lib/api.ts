@@ -57,12 +57,53 @@ export type HealthVitalsDto = {
 };
 
 export type CompanionChatResponse = {
-  response: string;
-  mood: "neutral" | "happy" | "concerned";
-  actions: Array<{ type: "call_family" | "reminder"; data: Record<string, unknown> }>;
+  reply: string;
+  sentiment: "joy" | "neutral" | "anxiety" | "sadness";
+  memories_updated: boolean;
+  escalated?: boolean;
+};
+
+export type CompanionHistoryMessage = {
+  id: string;
+  patient_id: string;
+  role: "user" | "assistant";
+  content: string;
+  sentiment: "joy" | "neutral" | "anxiety" | "sadness" | null;
+  created_at: string;
+};
+
+export type PatientMemory = {
+  id: string;
+  patient_id: string;
+  memory_key: string;
+  memory_value: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NewsItem = {
+  id: string;
+  headline: string;
+  summary?: string | null;
+  source?: string | null;
+  published_at?: string;
+  fetched_at?: string;
+  category?: string | null;
+};
+
+type ApiEnvelope<T> = {
+  success: boolean;
+  data: T;
+  message?: string;
 };
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/v1").replace(/\/$/, "");
+const COMPANION_API_BASE_URL = (() => {
+  if (/\/api\/v1$/.test(API_BASE_URL)) return API_BASE_URL.replace(/\/api\/v1$/, "/api");
+  if (/\/v1$/.test(API_BASE_URL)) return API_BASE_URL.replace(/\/v1$/, "/api");
+  if (/\/api$/.test(API_BASE_URL)) return API_BASE_URL;
+  return `${API_BASE_URL}/api`;
+})();
 const TOKEN_KEY = "saya.authToken";
 
 export function getAuthToken() {
@@ -77,7 +118,7 @@ export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function requestWithBase<T>(baseUrl: string, path: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers = new Headers(options.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -85,13 +126,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     const message = body?.message ?? `Request failed with ${response.status}`;
     throw new Error(message);
   }
   return body as T;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return requestWithBase<T>(API_BASE_URL, path, options);
+}
+
+async function companionRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return requestWithBase<T>(COMPANION_API_BASE_URL, path, options);
+}
+
+function unwrapData<T>(payload: T | ApiEnvelope<T>): T {
+  if (payload && typeof payload === "object" && "success" in payload && "data" in payload) {
+    return (payload as ApiEnvelope<T>).data;
+  }
+  return payload as T;
 }
 
 export const api = {
@@ -143,10 +199,50 @@ export const api = {
       body: JSON.stringify(payload)
     }),
 
-  companionChat: (payload: { message: string; context?: { lastMood?: string; location?: string } }) =>
-    request<CompanionChatResponse>("/companion/chat", {
+  companionChat: async (payload: { patient_id: string; message: string; language: "hi" | "en" }) => {
+    const result = await companionRequest<CompanionChatResponse | ApiEnvelope<CompanionChatResponse>>("/companion/chat", {
       method: "POST",
       body: JSON.stringify(payload)
-    })
+    });
+    return unwrapData(result);
+  },
+
+  getCompanionHistory: async (patientId: string) => {
+    const result = await companionRequest<CompanionHistoryMessage[] | ApiEnvelope<CompanionHistoryMessage[]>>(`/companion/history/${patientId}`);
+    return unwrapData(result);
+  },
+
+  getCompanionMemories: async (patientId: string) => {
+    const result = await companionRequest<PatientMemory[] | ApiEnvelope<PatientMemory[]>>(`/companion/memories/${patientId}`);
+    return unwrapData(result);
+  },
+
+  deleteCompanionMemory: async (patientId: string, memoryKey: string) => {
+    const result = await companionRequest<{ deleted: boolean } | ApiEnvelope<{ deleted: boolean }>>(
+      `/companion/memories/${patientId}/${encodeURIComponent(memoryKey)}`,
+      { method: "DELETE" }
+    );
+    return unwrapData(result);
+  },
+
+  updateCompanionPreferences: async (patientId: string, payload: { tone: "warm" | "formal" | "playful"; language: "hi" | "en" }) => {
+    const result = await companionRequest<unknown | ApiEnvelope<unknown>>(`/companion/preferences/${patientId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+    return unwrapData(result);
+  },
+
+  getCompanionPreferences: async (patientId: string) => {
+    const result = await companionRequest<{ tone: "warm" | "formal" | "playful"; language: "hi" | "en" } | ApiEnvelope<{ tone: "warm" | "formal" | "playful"; language: "hi" | "en" }>>(
+      `/companion/preferences/${patientId}`
+    );
+    return unwrapData(result);
+  },
+
+  async getCompanionNews(): Promise<NewsItem[]> {
+    const result = await companionRequest<NewsItem[] | ApiEnvelope<NewsItem[]>>("/companion/news");
+    return unwrapData(result);
+  }
 };
 

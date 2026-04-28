@@ -1,52 +1,86 @@
-type VoiceState = "idle" | "listening" | "processing";
+import { Mic, Loader2 } from "lucide-react";
 
-export function VoiceButton({ state, onClick }: { state: VoiceState; onClick: () => void }) {
+type VoiceState = "idle" | "listening" | "processing";
+type InputLanguage = "en" | "hi";
+
+type VoiceButtonProps = {
+  state: VoiceState;
+  language: InputLanguage;
+  onClick: () => void;
+  onLanguageChange: (language: InputLanguage) => void;
+};
+
+export function VoiceButton({ state, language, onClick, onLanguageChange }: VoiceButtonProps) {
+  // Waveform bars on the left and right
+  const renderWaveform = (side: "left" | "right") => {
+    const isListening = state === "listening";
+    const delays = side === "left" ? ["0ms", "150ms", "300ms"] : ["300ms", "150ms", "0ms"];
+    const heights = ["h-6", "h-10", "h-14"];
+    
+    return (
+      <div className="flex items-center gap-1.5 mx-4">
+        {delays.map((delay, i) => (
+          <div 
+            key={`${side}-${i}`}
+            className={`w-1.5 bg-[#E85D2A] rounded-full transition-all duration-500 ease-in-out
+              ${isListening ? 'animate-pulse opacity-100' : 'h-2 opacity-40'}
+              ${isListening ? heights[i] : ''}
+            `}
+            style={{ animationDelay: delay }}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center justify-center gap-4">
+      <button
+        type="button"
+        aria-label={`Switch voice input language. Current ${language === "en" ? "English" : "Hindi"}`}
+        onClick={() => onLanguageChange(language === "en" ? "hi" : "en")}
+        className="rounded-full border border-[#E85D2A]/30 bg-white px-4 py-2 text-sm font-bold tracking-wider uppercase text-[#83311A] hover:bg-[#F5F1EA] transition-all duration-300"
+      >
+        {language === "en" ? "EN / हिं" : "हिं / EN"}
+      </button>
+
+      <div className="flex items-center justify-center">
+      {renderWaveform("left")}
+      
       <button
         onClick={onClick}
+        aria-label={state === "idle" ? "Start voice input" : state === "listening" ? "Listening" : "Processing voice input"}
         disabled={state !== "idle"}
-        className={`relative w-40 h-40 rounded-full shadow-2xl transition-all duration-500 ${
-          state === "idle"
-            ? "bg-gradient-to-br from-[#E85D2A] to-[#ff9e6e] hover:from-[#d64d1f] hover:to-[#ff8a5c] hover:scale-110 active:scale-95 cursor-pointer"
-            : state === "listening"
-            ? "bg-gradient-to-br from-[#E85D2A] to-[#ff9e6e] scale-110"
-            : "bg-gradient-to-br from-[#E85D2A] to-[#ff9e6e] opacity-80"
-        } disabled:cursor-not-allowed font-semibold`}
+        className={`relative w-32 h-32 rounded-full transition-all duration-300 flex items-center justify-center z-10
+          ${
+            state === "idle"
+              ? "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] shadow-[0_15px_30px_rgba(232,93,42,0.4),inset_0_4px_10px_rgba(255,255,255,0.5),inset_0_-4px_10px_rgba(0,0,0,0.15)] hover:scale-105 active:scale-95 cursor-pointer hover:shadow-[0_20px_40px_rgba(232,93,42,0.5),inset_0_6px_12px_rgba(255,255,255,0.6),inset_0_-4px_10px_rgba(0,0,0,0.15)]"
+              : state === "listening"
+              ? "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] scale-105 shadow-[0_0_40px_rgba(232,93,42,0.6),inset_0_4px_10px_rgba(255,255,255,0.5),inset_0_-4px_10px_rgba(0,0,0,0.15)]"
+              : "bg-gradient-to-b from-[#ff8a63] to-[#E85D2A] opacity-80 shadow-none"
+          } disabled:cursor-not-allowed`}
       >
-        <div className="flex items-center justify-center h-full w-full">
-          {state === "idle" && (
-            <div className="flex flex-col items-center gap-2">
-              <svg className="w-16 h-16 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-              </svg>
-              <span className="text-white text-sm font-semibold uppercase tracking-wide">Speak</span>
-            </div>
-          )}
-
-          {state === "listening" && (
-            <div className="flex gap-2 items-end justify-center h-full">
-              <div className="w-1.5 h-12 bg-white/90 rounded-full animate-pulse" style={{ animationDuration: "0.6s", animationDelay: "0s" }} />
-              <div className="w-1.5 h-16 bg-white rounded-full animate-pulse" style={{ animationDuration: "0.6s", animationDelay: "0.1s" }} />
-              <div className="w-1.5 h-12 bg-white/90 rounded-full animate-pulse" style={{ animationDuration: "0.6s", animationDelay: "0.2s" }} />
-              <div className="w-1.5 h-16 bg-white rounded-full animate-pulse" style={{ animationDuration: "0.6s", animationDelay: "0.3s" }} />
-              <div className="w-1.5 h-12 bg-white/90 rounded-full animate-pulse" style={{ animationDuration: "0.6s", animationDelay: "0.4s" }} />
-            </div>
-          )}
-
-          {state === "processing" && (
-            <svg className="w-16 h-16 text-white animate-spin drop-shadow" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          )}
-        </div>
+        {state === "idle" && (
+          <div className="flex flex-col items-center gap-2">
+            <Mic className="w-10 h-10 text-white filter drop-shadow-md" strokeWidth={2.5} />
+            <span className="text-white text-sm font-extrabold uppercase tracking-widest drop-shadow-md">Speak</span>
+          </div>
+        )}
 
         {state === "listening" && (
-          <div className="absolute inset-0 rounded-full border-3 border-white/40 animate-ping opacity-75" />
+          <div className="flex flex-col items-center gap-2">
+             <Mic className="w-10 h-10 text-white animate-pulse" strokeWidth={2.5} />
+             <span className="text-white text-sm font-extrabold uppercase tracking-widest animate-pulse">Listening</span>
+          </div>
+        )}
+
+        {state === "processing" && (
+          <Loader2 className="w-10 h-10 text-white animate-spin" />
         )}
       </button>
+
+      {renderWaveform("right")}
+      </div>
     </div>
   );
 }

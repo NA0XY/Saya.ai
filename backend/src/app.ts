@@ -1,3 +1,4 @@
+/// <reference path="./types/express.d.ts" />
 import './config/env';
 import path from 'path';
 import cors from 'cors';
@@ -34,6 +35,14 @@ app.get('/ready', async (_req, res) => {
       env: true,
       supabase: !error
     },
+    supabase_error: error
+      ? {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      }
+      : null,
     latency_ms: Date.now() - startedAt
   });
 });

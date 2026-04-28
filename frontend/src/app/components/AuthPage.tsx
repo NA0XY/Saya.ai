@@ -2,28 +2,167 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { api } from "../lib/api";
 
+type GoogleCredentialResponse = { credential?: string };
+
+type GooglePromptMoment = {
+  isNotDisplayed?: () => boolean;
+  isSkippedMoment?: () => boolean;
+  getNotDisplayedReason?: () => string;
+  getSkippedReason?: () => string;
+};
+
+let googleIdentityScriptPromise: Promise<void> | null = null;
+
+function loadGoogleIdentityScript(): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Google Identity Services requires a browser"));
+  }
+  const googleIdentity = (window as Window & { google?: any }).google;
+  if (googleIdentity?.accounts?.id) return Promise.resolve();
+  if (googleIdentityScriptPromise) return googleIdentityScriptPromise;
+
+  googleIdentityScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>("script[data-google-identity='true']");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google Identity Services")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleIdentity = "true";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Google Identity Services"));
+    document.head.appendChild(script);
+  });
+
+  return googleIdentityScriptPromise;
+}
+
+function getGoogleIdentity() {
+  return (window as Window & { google?: any }).google;
+}
+
+function requestGoogleIdToken(clientId: string): Promise<string> {
+  return loadGoogleIdentityScript().then(
+    () =>
+      new Promise((resolve, reject) => {
+        const googleIdentity = getGoogleIdentity();
+        if (!googleIdentity?.accounts?.id) {
+          reject(new Error("Google Identity Services not available"));
+          return;
+        }
+
+        let settled = false;
+        const timeoutId = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new Error("Google sign-in timed out"));
+        }, 60000);
+
+        googleIdentity.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response: GoogleCredentialResponse) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeoutId);
+            if (response?.credential) {
+              resolve(response.credential);
+              return;
+            }
+            reject(new Error("Google sign-in returned no credential"));
+          },
+          ux_mode: "popup",
+          auto_select: false
+        });
+
+        googleIdentity.accounts.id.prompt((notification: GooglePromptMoment) => {
+          if (settled) return;
+          const notDisplayed = notification?.isNotDisplayed?.();
+          const skipped = notification?.isSkippedMoment?.();
+          if (!notDisplayed && !skipped) return;
+          settled = true;
+          window.clearTimeout(timeoutId);
+          const reason = notification?.getNotDisplayedReason?.() ?? notification?.getSkippedReason?.() ?? "prompt dismissed";
+          reject(new Error(`Google sign-in was dismissed (${reason})`));
+        });
+      })
+  );
+}
+
 export function AuthPage() {
   const navigate = useNavigate();
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const handleGoogleAuth = async () => {
-    const configuredToken = import.meta.env.VITE_DEMO_GOOGLE_ID_TOKEN;
-    const token = configuredToken || window.prompt("Paste a Google ID token to connect the live backend");
-    if (!token) {
-      setAuthError("Google sign-in needs a Google Identity token. Guest mode keeps the demo UI available.");
-      return;
-    }
-
+  const handleGoogleAuthRedirect = () => {
     setIsAuthenticating(true);
     setAuthError(null);
     try {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+      if (!clientId) {
+        throw new Error("Google Client ID not configured. Set VITE_GOOGLE_CLIENT_ID in .env");
+      }
+
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUrl,
+        response_type: "code",
+        scope: "openid email profile",
+        access_type: "online",
+        prompt: "select_account"
+      });
+
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    } catch (error) {
+      setIsAuthenticating(false);
+      setAuthError(error instanceof Error ? error.message : "Google sign-in setup failed");
+    }
+  };
+
+  const handleGoogleAuthIDToken = async () => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+    try {
+      const demoToken = import.meta.env.VITE_DEMO_GOOGLE_ID_TOKEN?.trim();
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+      let token = demoToken ?? "";
+
+      if (!token && clientId) {
+        token = await requestGoogleIdToken(clientId);
+      }
+
+      if (!token && import.meta.env.DEV) {
+        token = window.prompt("Paste a Google ID token to connect the live backend")?.trim() ?? "";
+      }
+
+      if (!token) {
+        throw new Error(
+          clientId
+            ? "Google sign-in was cancelled. Please try again."
+            : "Google sign-in isn't configured. Set VITE_GOOGLE_CLIENT_ID to enable it."
+        );
+      }
+
       const result = await api.authenticateWithGoogle(token);
       navigate("/dashboard");
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Google sign-in failed");
     } finally {
       setIsAuthenticating(false);
+    }
+  };
+
+  const handleGoogleAuth = () => {
+    const backendUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+    if (backendUrl && backendUrl.includes("localhost")) {
+      handleGoogleAuthIDToken();
+    } else {
+      handleGoogleAuthRedirect();
     }
   };
 

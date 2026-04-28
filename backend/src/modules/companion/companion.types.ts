@@ -15,6 +15,7 @@ export interface ChatResponse {
   reply: string;
   sentiment: SentimentTag;
   memories_updated: boolean;
+  escalated?: boolean;
 }
 
 export interface MemoryEntry {

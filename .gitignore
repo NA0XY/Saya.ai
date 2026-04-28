@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+**/dist/
+**/build/
+**/coverage/
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Logs and generated output
+*.log
+output.txt
+**/output.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime files
+uploads/*
+**/uploads/*
+!uploads/.gitkeep
+!uploads/prescriptions/.gitkeep
+!uploads/temp/.gitkeep
+!**/uploads/.gitkeep
+!**/uploads/prescriptions/.gitkeep
+!**/uploads/temp/.gitkeep
+
+# Tool caches and editor files
+*.tsbuildinfo
+.nyc_output/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
