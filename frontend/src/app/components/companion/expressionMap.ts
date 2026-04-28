@@ -11,6 +11,6 @@ export const EXPRESSION_MAP: Record<MoodType, string> = {
   happy: playfulImage,
   sad: sadImage,
   anxious: worriedImage,
-  listening: seriousImage,
-  thinking: seriousImage,
+  listening: happyNormalImage,
+  thinking: happyNormalImage,
 };

@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = void 0;
+/// <reference path="./types/express.d.ts" />
 require("./config/env");
 const path_1 = __importDefault(require("path"));
 const cors_1 = __importDefault(require("cors"));
@@ -15,6 +16,7 @@ const logger_1 = require("./config/logger");
 const error_middleware_1 = require("./middleware/error.middleware");
 const rateLimit_middleware_1 = require("./middleware/rateLimit.middleware");
 const requestId_middleware_1 = require("./middleware/requestId.middleware");
+const frontendContract_routes_1 = require("./routes/frontendContract.routes");
 const routes_1 = require("./routes");
 const webhook_routes_1 = require("./routes/webhook.routes");
 const supabase_1 = require("./config/supabase");
@@ -38,9 +40,19 @@ exports.app.get('/ready', async (_req, res) => {
             env: true,
             supabase: !error
         },
+        supabase_error: error
+            ? {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            }
+            : null,
         latency_ms: Date.now() - startedAt
     });
 });
+exports.app.use('/v1', frontendContract_routes_1.frontendContractRouter);
+exports.app.use('/api/v1', frontendContract_routes_1.frontendContractRouter);
 exports.app.use('/api', routes_1.router);
 exports.app.use('/webhooks', webhook_routes_1.webhookRouter);
 exports.app.use((_req, _res, next) => next(apiError_1.ApiError.notFound('Route')));

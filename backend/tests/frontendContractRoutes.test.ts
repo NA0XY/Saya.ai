@@ -46,12 +46,14 @@ async function listen() {
 test('frontend contract mounts user profile at /v1 and /api/v1 with a flat camelCase body', async () => {
   setRequiredEnv();
   const { frontendContractService } = await import('../src/modules/frontendContract/frontendContract.service');
+  const originalGetProfile = frontendContractService.getProfile;
   frontendContractService.getProfile = async () => ({
     id: 'user-1',
     name: 'Harsh',
     email: 'harsh@example.com',
     onboardingComplete: true,
-    role: 'caregiver'
+    role: 'caregiver',
+    patientNumber: '+919876543210'
   });
   const { sign } = await import('jsonwebtoken');
   const token = sign({ id: 'user-1', email: 'harsh@example.com', role: 'caregiver' }, process.env.JWT_SECRET!);
@@ -66,11 +68,91 @@ test('frontend contract mounts user profile at /v1 and /api/v1 with a flat camel
         name: 'Harsh',
         email: 'harsh@example.com',
         onboardingComplete: true,
-        role: 'caregiver'
+        role: 'caregiver',
+        patientNumber: '+919876543210'
       });
     }
   } finally {
+    frontendContractService.getProfile = originalGetProfile;
     await server.close();
+  }
+});
+
+test('frontend contract updates the patient number through /user/patient-number', async () => {
+  setRequiredEnv();
+  const { frontendContractService } = await import('../src/modules/frontendContract/frontendContract.service');
+  const originalUpdatePatientNumber = frontendContractService.updatePatientNumber;
+  frontendContractService.updatePatientNumber = async (_userId, input) => ({
+    status: 'success',
+    patientNumber: input.patientNumber
+  });
+  const { sign } = await import('jsonwebtoken');
+  const token = sign({ id: 'user-1', email: 'harsh@example.com', role: 'caregiver' }, process.env.JWT_SECRET!);
+  const server = await listen();
+
+  try {
+    const response = await fetch(`${server.baseUrl}/v1/user/patient-number`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientNumber: '9876543210' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: 'success', patientNumber: '9876543210' });
+  } finally {
+    frontendContractService.updatePatientNumber = originalUpdatePatientNumber;
+    await server.close();
+  }
+});
+
+test('frontend contract returns guardian contacts in user profile', async () => {
+  setRequiredEnv();
+  const { frontendContractService } = await import('../src/modules/frontendContract/frontendContract.service');
+  const { patientRepository } = await import('../src/modules/patients/patient.repository');
+  const { supabase } = await import('../src/config/supabase');
+
+  const originalFrom = supabase.from;
+  const originalFindByCaregiverId = patientRepository.findByCaregiverId;
+  const originalFindContactsByPatientId = patientRepository.findContactsByPatientId;
+
+  patientRepository.findByCaregiverId = async () => [{ id: 'patient-1', phone: '+919876543210' }] as never;
+  patientRepository.findContactsByPatientId = async () => ([
+    { id: 'contact-1', patient_id: 'patient-1', name: 'Anita', phone: '+919876543210', relationship: 'family', can_receive_escalation_sms: true, created_at: '2026-04-28T00:00:00.000Z' },
+    { id: 'contact-2', patient_id: 'patient-1', name: 'Rahul', phone: '+919812345678', relationship: 'family', can_receive_escalation_sms: true, created_at: '2026-04-28T00:00:00.000Z' }
+  ]) as never;
+  supabase.from = ((table: string) => {
+    if (table !== 'users') throw new Error(`Unexpected table: ${table}`);
+    return {
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({
+            data: { id: 'user-1', email: 'harsh@example.com', full_name: 'Harsh', role: 'caregiver' },
+            error: null
+          })
+        })
+      })
+    } as never;
+  }) as typeof supabase.from;
+
+  try {
+    const profile = await frontendContractService.getProfile('user-1');
+
+    assert.deepEqual(profile, {
+      id: 'user-1',
+      name: 'Harsh',
+      email: 'harsh@example.com',
+      onboardingComplete: true,
+      role: 'caregiver',
+      patientNumber: null,
+      guardianContacts: [
+        { name: 'Anita', phone: '+919876543210' },
+        { name: 'Rahul', phone: '+919812345678' }
+      ]
+    });
+  } finally {
+    supabase.from = originalFrom;
+    patientRepository.findByCaregiverId = originalFindByCaregiverId;
+    patientRepository.findContactsByPatientId = originalFindContactsByPatientId;
   }
 });
 

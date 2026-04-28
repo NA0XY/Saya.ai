@@ -20,6 +20,27 @@ export function parseScheduleTime(timeStr: string): { hours: number; minutes: nu
   return { hours, minutes };
 }
 
+function padTimePart(value: number): string {
+  return value.toString().padStart(2, '0');
+}
+
+export function shiftTimeByMinutes(timeStr: string, deltaMinutes: number): string {
+  const { hours, minutes } = parseScheduleTime(timeStr);
+  const totalMinutes = hours * 60 + minutes + deltaMinutes;
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const nextHours = Math.floor(normalized / 60);
+  const nextMinutes = normalized % 60;
+  return `${padTimePart(nextHours)}:${padTimePart(nextMinutes)}`;
+}
+
+export function convertLocalTimeToIst(timeStr: string, timezoneOffsetMinutes?: number): string {
+  const localOffsetMinutes = typeof timezoneOffsetMinutes === 'number'
+    ? -timezoneOffsetMinutes
+    : -new Date().getTimezoneOffset();
+  const deltaMinutes = IST_OFFSET_MINUTES - localOffsetMinutes;
+  return shiftTimeByMinutes(timeStr, deltaMinutes);
+}
+
 export function getNextOccurrence(timeStr: string): Date {
   const { hours, minutes } = parseScheduleTime(timeStr);
   const nowUtc = new Date();

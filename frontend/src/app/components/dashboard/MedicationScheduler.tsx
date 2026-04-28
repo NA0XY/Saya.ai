@@ -17,7 +17,8 @@ export function MedicationScheduler() {
         const result = await api.scheduleMedication({
           drugName: medicineName,
           time,
-          customMessage: customMessage || undefined
+          customMessage: customMessage || undefined,
+          timezoneOffsetMinutes: new Date().getTimezoneOffset()
         });
         setStatus(`Scheduled ${medicineName} (${result.status})`);
         setMedicineName("");

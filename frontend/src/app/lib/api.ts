@@ -4,6 +4,7 @@ export type UserProfile = {
   email: string;
   onboardingComplete: boolean;
   role: "caregiver" | "parent";
+  patientNumber?: string | null;
   guardianContacts?: Array<{ name: string; phone: string }>;
   companionTone?: "warm" | "formal" | "playful" | null;
   companionLanguage?: "english" | "hindi" | null;
@@ -11,16 +12,14 @@ export type UserProfile = {
   patientNumber?: string;
 };
 
-export type OnboardingPayload = {
-  contacts: Array<{ name: string; phone: string }>;
-  personality: "warm" | "formal" | "playful";
-  language: "english" | "hindi";
-};
-
 export type SettingsPayload = {
   contacts?: Array<{ name: string; phone: string }>;
   personality?: "warm" | "formal" | "playful";
   language?: "english" | "hindi";
+};
+
+export type PatientNumberPayload = {
+  patientNumber: string;
 };
 
 export type MemoryPayload = {
@@ -62,7 +61,34 @@ export type CompanionChatResponse = {
   sentiment: "joy" | "neutral" | "anxiety" | "sadness";
   memories_updated: boolean;
   escalated?: boolean;
+  latency_ms?: {
+    chat_total_ms?: number;
+    chat_first_token_ms?: number;
+  };
 };
+
+export type CompanionSttResponse = {
+  transcript: string;
+  language: "hi" | "en";
+  engine: "groq-whisper" | "local-faster-whisper";
+  stt_ms: number;
+  audio_ms?: number;
+  confidence_proxy: number;
+  quality_score: number;
+};
+
+export type CompanionTtsRequest = {
+  text: string;
+  language?: "hi" | "en";
+  sentiment?: "joy" | "neutral" | "anxiety" | "sadness";
+  tone?: "warm" | "formal" | "playful";
+  voiceSpeed?: "slow" | "medium" | "fast";
+};
+
+export type CompanionStreamEvent =
+  | { type: "assistant_token"; token: string }
+  | { type: "assistant_done"; data: CompanionChatResponse }
+  | { type: "assistant_error"; message: string };
 
 export type CompanionHistoryMessage = {
   id: string;
@@ -71,6 +97,10 @@ export type CompanionHistoryMessage = {
   content: string;
   sentiment: "joy" | "neutral" | "anxiety" | "sadness" | null;
   created_at: string;
+};
+
+export type CompanionPatientContext = {
+  patient_id: string | null;
 };
 
 export type PatientMemory = {
@@ -90,6 +120,39 @@ export type NewsItem = {
   published_at?: string;
   fetched_at?: string;
   category?: string | null;
+};
+
+export type MedicationScheduleDto = {
+  id: string;
+  patient_id: string;
+  caregiver_id: string;
+  medicine_name: string;
+  scheduled_time: string;
+  custom_message: string | null;
+  language: "hi" | "en";
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CallLogDto = {
+  id: string;
+  schedule_id: string;
+  patient_id: string;
+  exotel_call_sid: string | null;
+  status: "pending" | "initiated" | "answered" | "confirmed" | "rejected" | "no_answer" | "failed";
+  attempt_number: number;
+  initiated_at: string | null;
+  answered_at: string | null;
+  ivr_response: "1" | "2" | null;
+  created_at: string;
+};
+
+export type DashboardSummaryDto = {
+  patients: Array<{ id: string; full_name: string; phone: string; created_at: string; updated_at: string }>;
+  recentAlerts: AlertDto[];
+  activeSchedules: MedicationScheduleDto[];
+  recentCallLogs: CallLogDto[];
 };
 
 type ApiEnvelope<T> = {
@@ -119,6 +182,11 @@ export function clearAuthToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+export async function startGoogleOAuth(returnTo = "/dashboard"): Promise<string> {
+  const result = await request<{ url: string }>(`/auth/google/start?returnTo=${encodeURIComponent(returnTo)}`);
+  return result.url;
+}
+
 async function requestWithBase<T>(baseUrl: string, path: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers = new Headers(options.headers);
@@ -144,6 +212,22 @@ async function companionRequest<T>(path: string, options: RequestInit = {}): Pro
   return requestWithBase<T>(COMPANION_API_BASE_URL, path, options);
 }
 
+async function companionBinaryRequest(path: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken();
+  const headers = new Headers(options.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(`${COMPANION_API_BASE_URL}${path}`, { ...options, headers });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? `Request failed with ${response.status}`);
+  }
+  return response;
+}
+
 function unwrapData<T>(payload: T | ApiEnvelope<T>): T {
   if (payload && typeof payload === "object" && "success" in payload && "data" in payload) {
     return (payload as ApiEnvelope<T>).data;
@@ -163,12 +247,12 @@ export const api = {
 
   profile: () => request<UserProfile>("/user/profile"),
 
-  submitOnboarding: (payload: OnboardingPayload) => request<{ status: string }>("/user/onboarding", {
-    method: "POST",
+  updateSettings: (payload: SettingsPayload) => request<{ status: string }>("/user/settings", {
+    method: "PUT",
     body: JSON.stringify(payload)
   }),
 
-  updateSettings: (payload: SettingsPayload) => request<{ status: string }>("/user/settings", {
+  updatePatientNumber: (payload: PatientNumberPayload) => request<{ status: string; patientNumber: string }>("/user/patient-number", {
     method: "PUT",
     body: JSON.stringify(payload)
   }),
@@ -182,11 +266,25 @@ export const api = {
     method: "POST"
   }),
 
-  safetyStatus: () => request<SafetyStatusDto[]>("/dashboard/safety-status"),
+  safetyStatus: async () => {
+    const result = await request<SafetyStatusDto[] | ApiEnvelope<SafetyStatusDto[]>>("/dashboard/safety-status");
+    return unwrapData(result);
+  },
 
-  alerts: () => request<AlertDto[]>("/dashboard/alerts"),
+  alerts: async () => {
+    const result = await request<AlertDto[] | ApiEnvelope<AlertDto[]>>("/dashboard/alerts");
+    return unwrapData(result);
+  },
 
-  healthVitals: (range: "7d" | "30d" = "7d") => request<HealthVitalsDto>(`/dashboard/health-vitals?range=${range}`),
+  dashboardSummary: async () => {
+    const result = await request<DashboardSummaryDto | ApiEnvelope<DashboardSummaryDto>>("/dashboard");
+    return unwrapData(result);
+  },
+
+  healthVitals: async (range: "7d" | "30d" = "7d") => {
+    const result = await request<HealthVitalsDto | ApiEnvelope<HealthVitalsDto>>(`/dashboard/health-vitals?range=${range}`);
+    return unwrapData(result);
+  },
 
   extractMedicines: (image: File) => {
     const body = new FormData();
@@ -194,7 +292,7 @@ export const api = {
     return request<{ medicines: MedicineDto[] }>("/medications/extract", { method: "POST", body });
   },
 
-  scheduleMedication: (payload: { drugName: string; time: string; customMessage?: string }) =>
+  scheduleMedication: (payload: { drugName: string; time: string; customMessage?: string; timezoneOffsetMinutes?: number }) =>
     request<{ id: string; status: string }>("/medications/schedule", {
       method: "POST",
       body: JSON.stringify(payload)
@@ -205,6 +303,95 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     });
+    return unwrapData(result);
+  },
+
+  streamCompanionChat: async (
+    payload: { patient_id: string; message: string; language: "hi" | "en" },
+    onEvent: (event: CompanionStreamEvent) => void
+  ): Promise<CompanionChatResponse> => {
+    const token = getAuthToken();
+    const headers = new Headers({ "Content-Type": "application/json" });
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const response = await fetch(`${COMPANION_API_BASE_URL}/companion/chat/stream`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok || !response.body) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.message ?? `Request failed with ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResponse: CompanionChatResponse | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+
+      for (const frame of frames) {
+        const lines = frame.split("\n").map((line) => line.trim()).filter(Boolean);
+        const eventLine = lines.find((line) => line.startsWith("event:"));
+        const dataLine = lines.find((line) => line.startsWith("data:"));
+        if (!eventLine || !dataLine) continue;
+        const event = eventLine.replace(/^event:\s*/, "");
+        const data = dataLine.replace(/^data:\s*/, "");
+        const parsed = JSON.parse(data) as unknown;
+
+        if (event === "assistant_token") {
+          const tokenPayload = parsed as { token?: string };
+          if (tokenPayload.token) onEvent({ type: "assistant_token", token: tokenPayload.token });
+        } else if (event === "assistant_done") {
+          finalResponse = parsed as CompanionChatResponse;
+          onEvent({ type: "assistant_done", data: finalResponse });
+        } else if (event === "assistant_error") {
+          const errorPayload = parsed as { message?: string };
+          onEvent({ type: "assistant_error", message: errorPayload.message ?? "Companion stream failed" });
+          throw new Error(errorPayload.message ?? "Companion stream failed");
+        }
+      }
+    }
+
+    if (!finalResponse) {
+      throw new Error("Companion stream ended before final response");
+    }
+    return finalResponse;
+  },
+
+  getCompanionPatientContext: async () => {
+    const result = await companionRequest<CompanionPatientContext | ApiEnvelope<CompanionPatientContext>>("/companion/patient");
+    return unwrapData(result);
+  },
+
+  streamCompanionSpeech: (patientId: string, payload: CompanionTtsRequest) =>
+    companionBinaryRequest(`/companion/tts/${patientId}/stream`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  transcribeCompanionAudio: async (
+    patientId: string,
+    audio: Blob,
+    language: "hi" | "en",
+    captureMs?: number
+  ) => {
+    const body = new FormData();
+    body.append("audio", audio, "utterance.webm");
+    body.append("language", language);
+    if (typeof captureMs === "number" && Number.isFinite(captureMs)) {
+      body.append("capture_ms", String(Math.max(0, Math.round(captureMs))));
+    }
+    const result = await companionRequest<CompanionSttResponse | ApiEnvelope<CompanionSttResponse>>(
+      `/companion/stt/${patientId}`,
+      { method: "POST", body }
+    );
     return unwrapData(result);
   },
 

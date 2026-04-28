@@ -1,10 +1,17 @@
 import { Link, useNavigate } from "react-router-dom";
+import { startGoogleOAuth } from "../lib/api";
 
 export function AuthPage() {
   const navigate = useNavigate();
 
-  const handleAuth = () => {
-    navigate("/onboarding");
+  const handleAuth = async () => {
+    try {
+      const url = await startGoogleOAuth("/dashboard");
+      window.location.assign(url);
+    } catch (error) {
+      console.error("Failed to start Google OAuth", error);
+      navigate("/auth/callback#error=oauth_start_failed");
+    }
   };
 
   return (

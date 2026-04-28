@@ -45,6 +45,11 @@ exports.patientRepository = {
             throw apiError_1.ApiError.internal('Failed to create approved contact');
         return result.data;
     },
+    async deleteContactsByPatientId(patientId) {
+        const { error } = await supabase_1.supabase.from('approved_contacts').delete().eq('patient_id', patientId);
+        if (error)
+            throw apiError_1.ApiError.internal('Failed to delete approved contacts');
+    },
     async findContactsByPatientId(patientId) {
         const { data, error } = await supabase_1.supabase.from('approved_contacts').select('*').eq('patient_id', patientId).order('created_at');
         if (error)

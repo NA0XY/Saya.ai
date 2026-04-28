@@ -14,6 +14,7 @@ const alert_service_1 = require("../alerts/alert.service");
 const patient_repository_1 = require("../patients/patient.repository");
 const sms_service_1 = require("../calls/sms.service");
 const companion_prompts_1 = require("./companion.prompts");
+const logger_1 = require("../../config/logger");
 const groq = new groq_sdk_1.default({ apiKey: env_1.env.GROQ_API_KEY });
 const allowed = ['joy', 'neutral', 'anxiety', 'sadness'];
 const negativeSentiments = new Set(['anxiety', 'sadness']);
@@ -22,30 +23,44 @@ function shouldEscalateForConsecutiveNegativeSentiments(currentSentiment, previo
 }
 exports.sentimentService = {
     async analyzeSentiment(message, _language) {
-        const completion = await (0, timeout_1.withTimeout)(groq.chat.completions.create({ model: 'llama3-70b-8192', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${(0, companion_prompts_1.buildSentimentPrompt)()} Schema: ${companion_prompts_1.SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] }).catch((error) => {
-            throw apiError_1.ApiError.badGateway('Groq sentiment analysis failed', { error: error instanceof Error ? error.message : String(error) }, 'GROQ_SENTIMENT_PROVIDER_ERROR');
-        }), env_1.env.GROQ_TIMEOUT_MS, 'GROQ_SENTIMENT_TIMEOUT', 'Groq sentiment analysis timed out');
-        const raw = completion.choices[0]?.message?.content;
-        if (!raw)
-            throw apiError_1.ApiError.badGateway('Groq returned an empty sentiment result', undefined, 'GROQ_EMPTY_SENTIMENT');
         try {
-            const parsed = JSON.parse(raw);
-            return allowed.includes(parsed.sentiment) ? parsed.sentiment : 'neutral';
+            const completion = await (0, timeout_1.withTimeout)(groq.chat.completions.create({ model: 'llama-3.3-70b-versatile', temperature: 0, max_tokens: 80, messages: [{ role: 'system', content: `${(0, companion_prompts_1.buildSentimentPrompt)()} Schema: ${companion_prompts_1.SENTIMENT_JSON_SCHEMA}` }, { role: 'user', content: message }] }).catch((error) => {
+                throw apiError_1.ApiError.badGateway('Groq sentiment analysis failed', { error: error instanceof Error ? error.message : String(error) }, 'GROQ_SENTIMENT_PROVIDER_ERROR');
+            }), env_1.env.GROQ_TIMEOUT_MS, 'GROQ_SENTIMENT_TIMEOUT', 'Groq sentiment analysis timed out');
+            const raw = completion.choices[0]?.message?.content;
+            if (!raw) {
+                logger_1.logger.warn('[COMPANION_SENTIMENT] Empty sentiment response, defaulting to neutral');
+                return 'neutral';
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                return allowed.includes(parsed.sentiment) ? parsed.sentiment : 'neutral';
+            }
+            catch {
+                const tag = allowed.find((candidate) => raw.toLowerCase().includes(candidate));
+                if (!tag) {
+                    logger_1.logger.warn('[COMPANION_SENTIMENT] Malformed sentiment response, defaulting to neutral', { raw });
+                    return 'neutral';
+                }
+                return tag;
+            }
         }
-        catch {
-            const tag = allowed.find((candidate) => raw.toLowerCase().includes(candidate));
-            if (!tag)
-                throw apiError_1.ApiError.badGateway('Groq returned malformed sentiment JSON', { raw }, 'GROQ_MALFORMED_SENTIMENT');
-            return tag;
+        catch (error) {
+            logger_1.logger.warn('[COMPANION_SENTIMENT] Sentiment provider unavailable, defaulting to neutral', {
+                error: error instanceof Error ? error.message : String(error)
+            });
+            return 'neutral';
         }
     },
     async checkAndEscalate(patientId, currentSentiment, contacts, patientName) {
         if (!negativeSentiments.has(currentSentiment))
             return false;
+        if (contacts.length === 0)
+            return false;
         const { data, error } = await supabase_1.supabase.from('companion_messages').select('*').eq('patient_id', patientId).eq('role', 'user').order('created_at', { ascending: false }).limit(2);
         if (error)
             return false;
-        const previousSentiment = ((data ?? [])[0]?.sentiment ?? null);
+        const previousSentiment = ((data ?? [])[1]?.sentiment ?? null);
         if (!shouldEscalateForConsecutiveNegativeSentiments(currentSentiment, previousSentiment))
             return false;
         if (await alert_service_1.alertService.hasRecentEmotionalEscalation(patientId))

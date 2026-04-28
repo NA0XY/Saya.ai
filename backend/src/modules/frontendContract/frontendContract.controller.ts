@@ -7,7 +7,9 @@ import type {
   FrontendOnboardingInput,
   FrontendScheduleInput,
   GoogleAuthInput,
-  HealthVitalsQuery
+  HealthVitalsQuery,
+  PatientNumberInput,
+  UpdateSettingsInput
 } from './frontendContract.types';
 
 export const frontendContractController = {
@@ -35,6 +37,14 @@ export const frontendContractController = {
     res.json(await frontendContractService.getProfile(req.user!.id));
   }),
 
+  patientNumber: asyncHandler(async (req: Request<object, object, PatientNumberInput>, res: Response) => {
+    res.json(await frontendContractService.updatePatientNumber(req.user!.id, req.body));
+  }),
+
+  updateSettings: asyncHandler(async (req: Request<object, object, UpdateSettingsInput>, res: Response) => {
+    res.json(await frontendContractService.updateSettings(req.user!.id, req.body));
+  }),
+
   onboarding: asyncHandler(async (req: Request<object, object, FrontendOnboardingInput>, res: Response) => {
     res.json(await frontendContractService.submitOnboarding(req.user!.id, req.body));
   }),
@@ -45,6 +55,10 @@ export const frontendContractController = {
 
   alerts: asyncHandler(async (req: Request, res: Response) => {
     res.json(await frontendContractService.getAlerts(req.user!.id));
+  }),
+
+  dashboardSummary: asyncHandler(async (req: Request, res: Response) => {
+    res.json(await frontendContractService.getDashboardSummary(req.user!.id));
   }),
 
   healthVitals: asyncHandler(async (req: Request<object, object, object, HealthVitalsQuery>, res: Response) => {

@@ -25,6 +25,14 @@ export const EnvSchema = z.object({
   TWILIO_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   POLLY_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
   NEWS_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  COMPANION_STT_PROVIDER: z.enum(['local_faster_whisper', 'groq_whisper']).default('groq_whisper'),
+  LOCAL_STT_URL: z.string().url().default('http://127.0.0.1:7001'),
+  LOCAL_STT_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  COMPANION_TTS_PROVIDER: z.enum(['piper', 'google']).default('piper'),
+  PIPER_BINARY_PATH: z.string().optional().default(''),
+  PIPER_MODEL_EN_PATH: z.string().optional().default(''),
+  PIPER_CONFIG_EN_PATH: z.string().optional().default(''),
+  PIPER_HTTP_DEBUG_ENABLED: z.string().optional().default('false'),
   OPENFDA_API_KEY: z.string().optional().default(''),
   OPENFDA_LABEL_URL: z.string().url().default('https://api.fda.gov/drug/label.json'),
   OPENFDA_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
@@ -36,7 +44,7 @@ export const EnvSchema = z.object({
   BACKEND_URL: z.string().url().default('http://localhost:3001'),
   MAX_FILE_SIZE_MB: z.coerce.number().positive().default(10),
   UPLOAD_DIR: z.string().default('./uploads'),
-  MAX_CALL_RETRIES: z.coerce.number().int().positive().default(5),
+  MAX_CALL_RETRIES: z.coerce.number().int().positive().default(3),
   RETRY_INTERVAL_MINUTES: z.coerce.number().int().positive().default(3)
 });
 

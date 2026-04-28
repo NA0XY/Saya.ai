@@ -11,18 +11,27 @@ const logger_1 = require("../config/logger");
 const apiError_1 = require("../utils/apiError");
 function errorMiddleware(err, req, res, _next) {
     if (err instanceof apiError_1.ApiError) {
+        logger_1.logger.warn('[API_ERROR]', { code: err.code, message: err.message, statusCode: err.statusCode, requestId: req.requestId });
         res.status(err.statusCode).json({ success: false, code: err.code, message: err.message, requestId: req.requestId, details: err.details });
         return;
     }
     if (err instanceof multer_1.default.MulterError) {
+        logger_1.logger.warn('[UPLOAD_ERROR]', { message: err.message, requestId: req.requestId });
         res.status(400).json({ success: false, code: 'UPLOAD_ERROR', message: err.message, requestId: req.requestId });
         return;
     }
     if (err instanceof zod_1.ZodError) {
+        logger_1.logger.warn('[VALIDATION_ERROR]', { errors: err.format(), requestId: req.requestId });
         res.status(422).json({ success: false, code: 'VALIDATION_ERROR', message: 'Validation error', requestId: req.requestId, details: err.format() });
         return;
     }
-    logger_1.logger.error('[ERROR] Unhandled request error', { message: err.message, stack: err.stack });
+    logger_1.logger.error('[UNHANDLED_ERROR]', {
+        method: req.method,
+        path: req.path,
+        message: err.message,
+        stack: err.stack,
+        requestId: req.requestId
+    });
     res.status(500).json({
         success: false,
         code: 'INTERNAL_ERROR',

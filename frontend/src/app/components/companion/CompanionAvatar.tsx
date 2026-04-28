@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
 
-type VoiceState = "idle" | "listening" | "processing";
+type VoiceState =
+  | "idle"
+  | "listening"
+  | "finalizing"
+  | "transcribing"
+  | "thinking"
+  | "speaking"
+  | "auto_relisten";
 
 type CompanionAvatarProps = {
   mood: MoodType;
@@ -13,11 +20,13 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
   const [prevMood, setPrevMood] = useState<MoodType | null>(null);
   const [isCrossfading, setIsCrossfading] = useState(false);
   const [currentVisible, setCurrentVisible] = useState(false);
+  const [currentImageFailed, setCurrentImageFailed] = useState(false);
 
   useEffect(() => {
     if (mood === displayedMood) return;
 
-    setPrevMood(displayedMood);
+    const previousMood = displayedMood;
+    setPrevMood(previousMood);
     setDisplayedMood(mood);
     setIsCrossfading(true);
     setCurrentVisible(false);
@@ -36,7 +45,11 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
       window.cancelAnimationFrame(startFrame);
       window.clearTimeout(timer);
     };
-  }, [displayedMood, mood]);
+  }, [mood]);
+
+  useEffect(() => {
+    setCurrentImageFailed(false);
+  }, [displayedMood]);
 
   return (
     <div className="w-full h-full min-h-96 flex flex-col items-center justify-center relative group">
@@ -51,16 +64,27 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
             <img
               src={EXPRESSION_MAP[prevMood] ?? EXPRESSION_MAP.neutral}
               alt={`Companion ${prevMood} expression`}
-              className="absolute inset-0 w-full h-full object-contain transition-opacity duration-[600ms] ease-in-out"
+              className="absolute inset-0 w-full h-full object-contain transition-opacity duration-[600ms] ease-in-out drop-shadow-[0_20px_35px_rgba(232,93,42,0.22)]"
               style={{ opacity: isCrossfading ? 0 : 1 }}
+              loading="eager"
+              decoding="sync"
             />
           )}
-          <img
-            src={EXPRESSION_MAP[displayedMood] ?? EXPRESSION_MAP.neutral}
-            alt={`Companion ${displayedMood} expression`}
-            className="absolute inset-0 w-full h-full object-contain transition-opacity duration-[600ms] ease-in-out"
-            style={{ opacity: isCrossfading ? (currentVisible ? 1 : 0) : 1 }}
-          />
+          {!currentImageFailed ? (
+            <img
+              src={EXPRESSION_MAP[displayedMood] ?? EXPRESSION_MAP.neutral}
+              alt={`Companion ${displayedMood} expression`}
+              className="absolute inset-0 w-full h-full object-contain transition-opacity duration-[600ms] ease-in-out drop-shadow-[0_20px_35px_rgba(232,93,42,0.28)]"
+              style={{ opacity: isCrossfading ? (currentVisible ? 1 : 0) : 1 }}
+              loading="eager"
+              decoding="sync"
+              onError={() => setCurrentImageFailed(true)}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/80 border border-[#E85D2A]/20 text-7xl">
+              🙂
+            </div>
+          )}
         </div>
         <div
           className="absolute inset-8 bg-[#E85D2A]/40 blur-[60px] -z-10 rounded-full opacity-60 animate-pulse"
@@ -84,7 +108,7 @@ export function CompanionAvatar({ mood, voiceState }: CompanionAvatarProps) {
         </div>
       )}
 
-      {voiceState === "processing" && (
+      {(voiceState === "transcribing" || voiceState === "thinking") && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-2 z-20 bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-gray-100">
           <div className="w-2.5 h-2.5 bg-[#E85D2A] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
           <div className="w-2.5 h-2.5 bg-[#E85D2A] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
