@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { DottedBackground } from "../DottedBackground";
 import { UploadZone } from "./UploadZone";
 import { VerificationForm } from "./VerificationForm";
@@ -152,3 +152,4 @@ export function PrescriptionUploadPage() {
     </div>
   );
 }
+

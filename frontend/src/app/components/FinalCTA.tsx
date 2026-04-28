@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 export function FinalCTA() {
   return (
@@ -26,3 +26,4 @@ export function FinalCTA() {
     </section>
   );
 }
+

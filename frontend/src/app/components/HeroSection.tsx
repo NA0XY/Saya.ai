@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link } from "react-router-dom";
 
 export function HeroSection() {
   return (
@@ -77,3 +77,4 @@ export function HeroSection() {
     </section>
   );
 }
+

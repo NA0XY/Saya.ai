@@ -1,6 +1,11 @@
+<<<<<<< HEAD
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+=======
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Settings, X } from "lucide-react";
+>>>>>>> 5cf29c319fe07faac5b03434cf92c6bedee1c7f0
 import { DottedBackground } from "../DottedBackground";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
@@ -825,3 +830,4 @@ export function CompanionInterface() {
     </div>
   );
 }
+

@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
-export function DashboardNav() {
+type DashboardNavProps = {
+  onSettingsOpen?: () => void;
+};
+
+export function DashboardNav({ onSettingsOpen }: DashboardNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -28,6 +32,13 @@ export function DashboardNav() {
         <nav role="navigation" className="nav_menu hide-tablet w-nav-menu">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4">
+              <Link
+                to="/dashboard/settings"
+                aria-label="Open system configuration"
+                className="text-[#83311A] font-bold uppercase tracking-wider text-sm hover:text-[#E85D2A] transition-colors"
+              >
+                Settings
+              </Link>
               <div className="w-12 h-12 bg-gradient-to-br from-[#E85D2A] to-[#83311A] rounded-xl flex items-center justify-center text-white font-bold text-lg cursor-pointer hover:shadow-lg transition-all transform hover:-translate-y-0.5">
                 U
               </div>
@@ -49,3 +60,4 @@ export function DashboardNav() {
     </div>
   );
 }
+
