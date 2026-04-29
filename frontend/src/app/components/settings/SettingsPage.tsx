@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import { GuardianContactHub } from "./GuardianContactHub";
 import { PatientNumberSettings } from "./PatientNumberSettings";
 import { GuardianCallerPanel } from "./GuardianCallerPanel";
+<<<<<<< HEAD
+import { SafetyDashboardPanel } from "./SafetyDashboardPanel";
+import { SystemStatusPanel } from "./SystemStatusPanel";
+=======
+>>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 import {
   PhoneIcon,
   MobileIcon,
@@ -11,12 +16,22 @@ import {
 import { api } from "../../lib/api";
 import type { UserProfile } from "../../lib/api";
 
+<<<<<<< HEAD
+type Tab = "contacts" | "patient" | "medical" | "caller" | "soul" | "safety" | "status";
+=======
 type Tab = "contacts" | "patient" | "caller";
+>>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 
 const PILLARS: { id: Tab; label: string; Icon: React.ComponentType }[] = [
   { id: "contacts", label: "Guardian Contacts", Icon: PhoneIcon },
   { id: "patient", label: "Patient Number", Icon: MobileIcon },
   { id: "caller", label: "Guardian Caller", Icon: CallerIcon },
+<<<<<<< HEAD
+  { id: "soul", label: "Companion Soul", Icon: SoulIcon },
+  { id: "safety", label: "Safety & Precaution", Icon: SafetyIcon },
+  { id: "status", label: "System Status", Icon: StatusIcon },
+=======
+>>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 ];
 
 export function SettingsPage() {
