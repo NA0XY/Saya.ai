@@ -280,7 +280,7 @@ export const api = {
   },
 
   dashboardSummary: async () => {
-    const result = await request<DashboardSummaryDto | ApiEnvelope<DashboardSummaryDto>>("/dashboard");
+    const result = await request<DashboardSummaryDto | ApiEnvelope<DashboardSummaryDto>>("/dashboard", { cache: "no-store" });
     return unwrapData(result);
   },
 
@@ -299,6 +299,11 @@ export const api = {
     request<{ id: string; status: string }>("/medications/schedule", {
       method: "POST",
       body: JSON.stringify(payload)
+    }),
+
+  deleteSchedule: (scheduleId: string) =>
+    request<{ id: string }>(`/medications/${scheduleId}`, {
+      method: "DELETE"
     }),
 
   companionChat: async (payload: { patient_id: string; message: string; language: "hi" | "en" }) => {

@@ -52,27 +52,27 @@ export function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F1EA] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F6F4EB] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#E85D2A]/20 border-t-[#E85D2A] rounded-full animate-spin" />
-          <p className="text-[#83311A] font-bold tracking-widest uppercase font-sketch">Loading Configuration...</p>
+          <div className="w-12 h-12 border-4 border-[#1A1A1A]/20 border-t-[#1A1A1A] rounded-full animate-spin" />
+          <p className="text-[#1A1A1A] font-bold tracking-widest uppercase font-sketch">Loading Configuration...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F1EA] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F6F4EB] flex flex-col font-sans">
       {/* Global Header */}
       <header className="bg-transparent sticky top-0 z-50 flex-shrink-0">
         <div className="w-full px-0 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard" className="w-8 h-8 sketch-box flex items-center justify-center text-[#83311A] hover:bg-[#D94F2B] hover:text-white transition-all transform hover:-translate-y-0.5" aria-label="Back to Dashboard">
+            <Link to="/dashboard" className="w-8 h-8 sketch-box flex items-center justify-center text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-all transform hover:-translate-y-0.5" aria-label="Back to Dashboard">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </Link>
-            <h1 className="text-xl font-sketch font-bold text-[#D94F2B] relative -top-1.5">SAYA.AI SETTINGS</h1>
+            <h1 className="text-xl font-sketch font-bold text-[#1A1A1A] relative -top-1.5">SAYA.AI SETTINGS</h1>
           </div>
-          <div className="w-10 h-10 bg-[#F5F1EA] sketch-box text-[#D94F2B] flex items-center justify-center text-lg">
+          <div className="w-10 h-10 bg-[#F6F4EB] sketch-box text-[#1A1A1A] flex items-center justify-center text-lg">
             ⚙️
           </div>
         </div>
@@ -90,12 +90,12 @@ export function SettingsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-3 px-4 py-3 transition-all whitespace-nowrap md:whitespace-normal w-full flex-shrink-0 md:flex-shrink-1 font-sketch text-[1rem] ${activeTab === tab.id
-                    ? "bg-white text-black sketch-box shadow-md font-bold"
-                    : "bg-transparent text-[#83311A] hover:underline hover:decoration-wavy hover:decoration-[#D94F2B]"
+                  ? "bg-white text-[#1A1A1A] sketch-box shadow-md font-bold"
+                  : "bg-transparent text-[#1A1A1A] hover:underline hover:decoration-wavy hover:decoration-[#E85D2A]"
                   }`}
-                style={activeTab === tab.id ? {
+                style={{
                   transform: `rotate(${idx % 2 === 0 ? -0.5 : 0.5}deg)`
-                } : {}}
+                }}
               >
                 <tab.Icon />
                 <span className="font-bold uppercase tracking-wider">{tab.label}</span>
@@ -121,10 +121,10 @@ export function SettingsPage() {
       {/* Persistent Footer */}
       <footer className="bg-transparent py-5 flex-shrink-0 mt-auto fixed bottom-0 left-0 right-0 z-50">
         <div className="w-full px-4 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-2">
-          <p className="text-[10px] text-[#83311A]/60 font-sketch uppercase tracking-widest">
+          <p className="text-[10px] text-[#1A1A1A]/60 font-sketch uppercase tracking-widest">
             Your data is secure and globally encrypted.
           </p>
-          <p className="text-[10px] text-[#83311A]/40 font-sketch">
+          <p className="text-[10px] text-[#1A1A1A]/40 font-sketch">
             SAYA.AI © 2026
           </p>
         </div>

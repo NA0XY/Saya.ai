@@ -79,7 +79,7 @@ export function SidebarNav() {
           box-shadow: 2px 2px 0px rgba(26,26,26,0.15);
         }
       `}</style>
-      
+
       <aside
         style={{
           position: "fixed",
