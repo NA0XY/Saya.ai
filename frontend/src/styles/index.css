@@ -195,3 +195,46 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ================================================================
+   GLOBAL SAYA COMPANION CURSOR
+   ================================================================ */
+* {
+  cursor: none !important;
+}
+
+#custom-cursor {
+  position: fixed;
+  z-index: 999999;
+  width: 80px;
+  height: 80px;
+  background-image: url('/assets/saya-companion-cursor-transparent.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease-in-out;
+  opacity: 0;
+  will-change: left, top, transform;
+}
+
+#custom-cursor.hovering {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+#custom-cursor.clicking {
+  transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* On mobile devices where hover is none, hide the custom cursor and restore default cursor */
+@media (hover: none) and (pointer: coarse) {
+  #custom-cursor {
+    display: none !important;
+  }
+  * {
+    cursor: auto !important;
+  }
+}
+

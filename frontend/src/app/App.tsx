@@ -1,5 +1,6 @@
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
+import CustomCursor from "./components/CustomCursor";
 
 /**
  * SVG filter that creates the hand-drawn "rough" effect
@@ -34,6 +35,7 @@ export default function App() {
   return (
     <>
       <SketchFilter />
+      <CustomCursor />
       <RouterProvider router={router} />
     </>
   );
