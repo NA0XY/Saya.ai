@@ -6,7 +6,7 @@ const statsCards = [
     href: '#',
     number: '340M',
     label: 'Elderly by 2050',
-    desc: 'India\'s elderly population\nwill reach 340 million.',
+    desc: 'India\'s elderly population will reach 340 million.',
     icon: '/koi-assets/68c15ee28d428484b55c04ff_happy.svg',
     iconAlt: 'Population icon',
   },
@@ -14,7 +14,7 @@ const statsCards = [
     href: '#',
     number: '1st',
     label: 'Priority',
-    desc: 'Children work in different cities.\nNuclear families are the norm.',
+    desc: 'Children work in different cities. Nuclear families are the norm.',
     icon: '/koi-assets/6829a13fb6a5b758938889d4_icon02.svg',
     iconAlt: 'Family icon',
   },
@@ -22,7 +22,7 @@ const statsCards = [
     href: '#',
     number: 'Daily',
     label: 'Struggle',
-    desc: 'Elderly parents live alone,\nstruggling with medications.',
+    desc: 'Elderly parents live alone, struggling with medications.',
     icon: '/koi-assets/6829a13fe14db4928d84d9b8_icon03.svg',
     iconAlt: 'Pill icon',
   },
@@ -30,7 +30,7 @@ const statsCards = [
     href: '#',
     number: 'Hidden',
     label: 'Risk',
-    desc: 'Eating foods that interact\nwith prescriptions.',
+    desc: 'Eating foods that interact with prescriptions.',
     icon: '/koi-assets/6829a13f79bd1b2d43ef6f4e_icon04.svg',
     iconAlt: 'Food icon',
   },
@@ -38,7 +38,7 @@ const statsCards = [
     href: '#',
     number: '0',
     label: 'Connection',
-    desc: 'Spending long hours\nwith no one to talk to.',
+    desc: 'Spending long hours with no one to talk to.',
     icon: '/koi-assets/68c15ee14c67c94294b95bba_mcp.avif',
     iconAlt: 'Chat icon',
   },
@@ -79,10 +79,10 @@ export function BlueAlertSection() {
                   <div className="found_card">
                     <div className="found_card-top">
                       <div className="found_number-wrapper">
-                        <div className="found_number">{card.number}</div>
-                        <div>{card.label}</div>
+                        <div className="found_number no-wrap">{card.number}</div>
+                        <div className="no-wrap">{card.label}</div>
                       </div>
-                      <p style={{ whiteSpace: 'pre-line' }}>{card.desc}</p>
+                      <p className="found-desc">{card.desc}</p>
                     </div>
                     <img src={card.icon} loading="lazy" alt={card.iconAlt} className="found_card-logo" />
                   </div>

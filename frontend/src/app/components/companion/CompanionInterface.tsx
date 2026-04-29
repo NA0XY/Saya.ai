@@ -13,7 +13,6 @@ import {
   type PatientMemory
 } from "../../lib/api";
 import { EXPRESSION_MAP, type MoodType } from "./expressionMap";
-import { NewsTicker } from "./NewsTicker";
 import { ChatHistory, type ChatMessage, type SentimentTag } from "./ChatHistory";
 
 type VoiceState =
@@ -67,12 +66,7 @@ function getLocalTimeGreeting(): string {
   return "Good evening";
 }
 
-function buildPersonalisedGreeting(memories: PatientMemory[], news: NewsItem[]): string {
-  if (news.length > 0) {
-    const topHeadline = news[0];
-    return `${getLocalTimeGreeting()}! I saw that ${topHeadline.headline.toLowerCase().replace(/\.$/, "")}. Would you like to know more?`;
-  }
-
+function buildPersonalisedGreeting(memories: PatientMemory[]): string {
   const favouriteDrink = memories.find((memory) => memory.memory_key === "favourite_drink");
   if (favouriteDrink?.memory_value) {
     return `Namaste! Would you like some ${favouriteDrink.memory_value} today?`;
@@ -360,7 +354,7 @@ export function CompanionInterface() {
 
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [loadingMemories, setLoadingMemories] = useState(true);
-  const [loadingNews, setLoadingNews] = useState(true);
+  const [loadingNews, setLoadingNews] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
 
   const [memories, setMemories] = useState<PatientMemory[]>([]);
@@ -861,8 +855,8 @@ export function CompanionInterface() {
     let cancelled = false;
 
     void (async () => {
-      const [memoryList, newsList] = await Promise.all([loadMemories(patientId), loadNews(), loadPreferences(patientId)]);
-      if (!cancelled) setGreetingText(buildPersonalisedGreeting(memoryList, newsList));
+      const [memoryList] = await Promise.all([loadMemories(patientId), loadPreferences(patientId)]);
+      if (!cancelled) setGreetingText(buildPersonalisedGreeting(memoryList));
       await loadHistory(patientId);
     })();
 
@@ -1237,8 +1231,6 @@ export function CompanionInterface() {
   return (
     <div className="min-h-screen bg-[#F5F1EA] relative overflow-hidden flex flex-col">
       <DottedBackground />
-      <NewsTicker news={news} loading={loadingNews} error={newsError} />
-
       {escalationBannerVisible && (
         <div className="relative z-30 mx-4 mt-4 bg-[#FFF3CD] border border-[#FFD700] rounded-xl px-6 py-3 text-sm font-semibold text-[#7D6608] flex items-center gap-3 transition-all duration-300">
           <span>💛</span>
