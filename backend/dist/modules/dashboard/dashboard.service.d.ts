@@ -1,10 +1,12 @@
 import type { Alert, CallLog, MedicationSchedule, Patient } from '../../types/database';
 import type { PatientSummary } from '../patients/patient.types';
+export type MoodState = 'happy' | 'neutral' | 'concerned';
 export interface DashboardData {
     patients: PatientSummary[];
     recentAlerts: Alert[];
     activeSchedules: MedicationSchedule[];
     recentCallLogs: CallLog[];
+    lastMood?: MoodState | null;
 }
 export interface PatientDashboardData {
     patient: Patient;
@@ -13,6 +15,7 @@ export interface PatientDashboardData {
     callLogs: CallLog[];
     companionMessageCount: number;
     vitals: unknown[];
+    lastMood?: MoodState | null;
 }
 export declare const dashboardService: {
     getDashboardData(caregiverId: string, demo?: boolean): Promise<DashboardData>;

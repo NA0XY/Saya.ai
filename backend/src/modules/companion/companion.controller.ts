@@ -137,7 +137,7 @@ export const companionController = {
     res.json(successResponse({ deleted: true }));
   }),
   getNews: asyncHandler(async (_req: Request, res: Response) => {
-    const news = await newsService.getLatestNews(8);
+    const news = await newsService.getLatestNews(8, true);
     res.json(successResponse(news));
   }),
   getPreferences: asyncHandler(async (req: Request<{ patientId: string }>, res: Response) => {

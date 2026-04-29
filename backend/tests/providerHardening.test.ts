@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import axios from 'axios';
 import test from 'node:test';
 
 function setRequiredEnv(): void {
@@ -175,6 +176,43 @@ test('status mapping against Twilio real-world CallStatus values', () => {
   assert.equal(mapStatus('no-answer'), 'no_answer');
   assert.equal(mapStatus('canceled'), 'no_answer');
   assert.equal(mapStatus('failed'), 'failed');
+});
+
+test('fetchIndianNews reads NewsData.io results and normalizes them', async () => {
+  setRequiredEnv();
+  const originalGet = axios.get;
+  const calls: string[] = [];
+
+  axios.get = (async (url: string) => {
+    calls.push(String(url));
+    return {
+      data: {
+        results: [
+          {
+            title: 'NewsData headline',
+            description: 'NewsData description',
+            source_id: 'NewsData Source'
+          }
+        ]
+      }
+    };
+  }) as typeof axios.get;
+
+  try {
+    const { fetchIndianNews } = await import('../src/modules/news/newsapi.client');
+    const articles = await fetchIndianNews();
+
+    assert.deepEqual(articles, [
+      {
+        title: 'NewsData headline',
+        description: 'NewsData description',
+        source: { name: 'NewsData Source' }
+      }
+    ]);
+    assert.equal(calls[0].includes('newsdata.io'), true);
+  } finally {
+    axios.get = originalGet;
+  }
 });
 
 test('medication reminder script includes stored custom message', async () => {

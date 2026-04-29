@@ -26,6 +26,10 @@ const MAX_HISTORY_MESSAGES = 12;
 const MAX_HISTORY_CHARS = 3800;
 const MAX_MEMORY_ITEMS = 18;
 const MAX_MEMORY_VALUE_CHARS = 160;
+function shouldIncludeNewsContext(message) {
+    const normalized = message.toLowerCase();
+    return /(^|\b)(news|headline|headlines|current affairs|latest update|latest updates|what(?:'| i)?s happening)(\b|$)/i.test(normalized);
+}
 function clampText(value, maxChars) {
     const normalized = value.replace(/\s+/g, ' ').trim();
     if (normalized.length <= maxChars)
@@ -123,11 +127,12 @@ async function prepareChatContext(request, caregiverId) {
     const patient = await patient_repository_1.patientRepository.findById(request.patient_id);
     if (!patient)
         throw apiError_1.ApiError.notFound('Patient');
-    const [memories, recentNews, history, contacts] = await Promise.all([
+    const includeNewsContext = shouldIncludeNewsContext(request.message);
+    const [memories, history, contacts, recentNews] = await Promise.all([
         memory_service_1.memoryService.getMemories(patient.id),
-        news_service_1.newsService.getLatestNews(5),
         exports.companionService.getHistory(patient.id, 20),
-        patient_repository_1.patientRepository.findEscalationContacts(patient.id)
+        patient_repository_1.patientRepository.findEscalationContacts(patient.id),
+        includeNewsContext ? news_service_1.newsService.getLatestNews(5) : Promise.resolve([])
     ]);
     const semanticMatches = await memory_service_1.memoryService.semanticSearch(patient.id, request.message, 6).catch(() => []);
     const semanticPromptMemories = semanticMatches.map((match, index) => ({

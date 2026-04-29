@@ -10,21 +10,54 @@ const patient_repository_1 = require("../patients/patient.repository");
 const prescription_repository_1 = require("../prescriptions/prescription.repository");
 const demoVitals_service_1 = require("./demoVitals.service");
 const demoPatient = { id: 'demo-patient-uuid', caregiver_id: 'demo-caregiver-uuid', full_name: 'Ramesh Kumar', phone: '+919876543210', date_of_birth: '1948-01-01', language_preference: 'hi', companion_tone: 'warm', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+function sentimentToMood(sentiment) {
+    if (!sentiment)
+        return 'neutral';
+    if (sentiment === 'joy')
+        return 'happy';
+    if (sentiment === 'anxiety' || sentiment === 'sadness')
+        return 'concerned';
+    return 'neutral';
+}
+async function getLatestMood(patientId) {
+    try {
+        const { data } = await supabase_1.supabase
+            .from('companion_messages')
+            .select('sentiment')
+            .eq('patient_id', patientId)
+            .eq('role', 'assistant')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (!data || !data.sentiment)
+            return null;
+        return sentimentToMood(data.sentiment);
+    }
+    catch (error) {
+        console.error('Failed to fetch latest mood:', error);
+        return null;
+    }
+}
 exports.dashboardService = {
     async getDashboardData(caregiverId, demo = false) {
         if (demo)
-            return { patients: [demoPatient], recentAlerts: [], activeSchedules: [], recentCallLogs: [] };
+            return { patients: [demoPatient], recentAlerts: [], activeSchedules: [], recentCallLogs: [], lastMood: null };
         const patients = await patient_repository_1.patientRepository.findByCaregiverId(caregiverId);
         const recentAlerts = await alert_repository_1.alertRepository.findByCaregiverId(caregiverId, 5);
         const activeSchedules = (await Promise.all(patients.map((patient) => medication_repository_1.medicationRepository.findSchedulesByPatient(patient.id)))).flat();
         const { data, error } = await supabase_1.supabase.from('call_logs').select('*').in('patient_id', patients.map((p) => p.id)).order('created_at', { ascending: false }).limit(10);
         if (error)
             throw apiError_1.ApiError.internal('Failed to load call logs');
-        return { patients, recentAlerts, activeSchedules, recentCallLogs: data ?? [] };
+        // Fetch latest mood for the primary patient
+        let lastMood = null;
+        if (patients.length > 0) {
+            lastMood = await getLatestMood(patients[0].id);
+        }
+        return { patients, recentAlerts, activeSchedules, recentCallLogs: data ?? [], lastMood };
     },
     async getPatientDashboard(patientId, caregiverId, demo = false) {
         if (demo || patientId === 'demo-patient-uuid')
-            return { patient: demoPatient, prescriptions: demoPrescriptions_1.DEMO_PRESCRIPTIONS, schedules: [], callLogs: [], companionMessageCount: 0, vitals: await demoVitals_service_1.demoVitalsService.getDemoVitals(patientId) };
+            return { patient: demoPatient, prescriptions: demoPrescriptions_1.DEMO_PRESCRIPTIONS, schedules: [], callLogs: [], companionMessageCount: 0, vitals: await demoVitals_service_1.demoVitalsService.getDemoVitals(patientId), lastMood: null };
         const patient = await patient_repository_1.patientRepository.findById(patientId);
         if (!patient)
             throw apiError_1.ApiError.notFound('Patient');
@@ -37,7 +70,8 @@ exports.dashboardService = {
             supabase_1.supabase.from('companion_messages').select('*', { count: 'exact', head: true }).eq('patient_id', patientId)
         ]);
         const logs = (await Promise.all(schedules.map((schedule) => medication_repository_1.medicationRepository.findCallLogsBySchedule(schedule.id)))).flat();
-        return { patient, prescriptions, schedules, callLogs: logs, companionMessageCount: countResult.count ?? 0, vitals };
+        const lastMood = await getLatestMood(patientId);
+        return { patient, prescriptions, schedules, callLogs: logs, companionMessageCount: countResult.count ?? 0, vitals, lastMood };
     }
 };
 //# sourceMappingURL=dashboard.service.js.map

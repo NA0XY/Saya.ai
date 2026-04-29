@@ -9,7 +9,7 @@ import { smsService } from '../calls/sms.service';
 import { newsService } from '../news/news.service';
 import { patientRepository } from '../patients/patient.repository';
 import { patientService } from '../patients/patient.service';
-import type { ApprovedContact, Patient, PatientMemory } from '../../types/database';
+import type { ApprovedContact, NewsCache, Patient, PatientMemory } from '../../types/database';
 import { buildCompanionSystemPrompt } from './companion.prompts';
 import type { ChatRequest, ChatResponse } from './companion.types';
 import { memoryService } from './memory.service';
@@ -32,11 +32,15 @@ type ChatContext = {
   contacts: ApprovedContact[];
   history: Array<{ role: string; content: string }>;
   system: string;
+  includeNewsContext: boolean;
+  recentNews: NewsCache[];
 };
 
 function shouldIncludeNewsContext(message: string): boolean {
   const normalized = message.toLowerCase();
-  return /(^|\b)(news|headline|headlines|current affairs|latest update|latest updates|what(?:'| i)?s happening)(\b|$)/i.test(normalized);
+  return /(^|\b)(news|headline|headlines|current affairs|current events|breaking news|live news|latest update|latest updates|news update|news updates|what(?:'| i)?s happening|samachar|khabar|khabar(?:e|en)?|taaza|taza)(\b|$)/i.test(
+    normalized
+  );
 }
 
 function clampText(value: string, maxChars: number): string {
@@ -80,6 +84,22 @@ function compactPromptMemories(memories: PatientMemory[]): PatientMemory[] {
       ...memory,
       memory_value: clampText(memory.memory_value ?? '', MAX_MEMORY_VALUE_CHARS)
     }));
+}
+
+function shouldBypassModelForNews(message: string): boolean {
+  return !/(tell me more|more details|more about|explain|expand on|why|how|details about)/i.test(message);
+}
+
+function buildNewsReply(recentNews: NewsCache[]): string {
+  if (recentNews.length === 0) return '';
+  const items = recentNews.slice(0, 3).map((news, index) => {
+    const headline = clampText(news.headline ?? '', 140);
+    return headline ? `${index + 1}) ${headline}` : '';
+  }).filter(Boolean);
+
+  if (items.length === 0) return '';
+  const joined = items.join(' ');
+  return `Here are today\'s top updates: ${joined}. Would you like more detail on any one?`;
 }
 
 function buildPromptMessages(context: ChatContext, userMessage: string): PromptMessage[] {
@@ -163,7 +183,7 @@ async function prepareChatContext(request: ChatRequest, caregiverId: string): Pr
     memoryService.getMemories(patient.id),
     companionService.getHistory(patient.id, 20),
     patientRepository.findEscalationContacts(patient.id),
-    includeNewsContext ? newsService.getLatestNews(5) : Promise.resolve([])
+    includeNewsContext ? newsService.getLatestNews(5, true) : Promise.resolve([])
   ]);
 
   const semanticMatches = await memoryService.semanticSearch(patient.id, request.message, 6).catch(() => []);
@@ -184,7 +204,14 @@ async function prepareChatContext(request: ChatRequest, caregiverId: string): Pr
     patient.companion_tone
   );
 
-  return { patient, contacts, history: compactPromptHistory(history), system };
+  return {
+    patient,
+    contacts,
+    history: compactPromptHistory(history),
+    system,
+    includeNewsContext,
+    recentNews
+  };
 }
 
 async function persistChatOutcome(
@@ -241,6 +268,17 @@ export const companionService = {
     const context = await prepareChatContext(request, caregiverId);
     const promptMessages = buildPromptMessages(context, request.message);
 
+    if (context.includeNewsContext && context.recentNews.length > 0 && shouldBypassModelForNews(request.message)) {
+      const newsReply = buildNewsReply(context.recentNews);
+      const response = await persistChatOutcome(request, caregiverId, context, newsReply);
+      return {
+        ...response,
+        latency_ms: {
+          chat_total_ms: Date.now() - chatStartedAt
+        }
+      };
+    }
+
     const completion = await createGroqCompletion(promptMessages);
 
     const rawReply = completion.choices[0]?.message?.content;
@@ -264,6 +302,22 @@ export const companionService = {
     const context = await prepareChatContext(request, caregiverId);
     const promptMessages = buildPromptMessages(context, request.message);
     let firstTokenTimestamp: number | null = null;
+
+    if (context.includeNewsContext && context.recentNews.length > 0 && shouldBypassModelForNews(request.message)) {
+      const newsReply = buildNewsReply(context.recentNews);
+      firstTokenTimestamp = Date.now();
+      emit('assistant_token', { token: newsReply });
+      const response = await persistChatOutcome(request, caregiverId, context, newsReply);
+      const fullResponse: ChatResponse = {
+        ...response,
+        latency_ms: {
+          chat_first_token_ms: firstTokenTimestamp - chatStartedAt,
+          chat_total_ms: Date.now() - chatStartedAt
+        }
+      };
+      emit('assistant_done', fullResponse);
+      return fullResponse;
+    }
 
     const tokenStream = await createGroqStream(promptMessages);
     let rawReply = '';
