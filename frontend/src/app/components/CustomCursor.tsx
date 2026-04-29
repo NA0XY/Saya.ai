@@ -95,8 +95,6 @@ export default function CustomCursor() {
         positionRef.current.x = e.clientX;
         positionRef.current.y = e.clientY;
       }
-      
-      if (cursor) cursor.style.opacity = '1';
 
       // Continual text analysis (throttled to 100ms)
       const now = Date.now();
@@ -135,8 +133,8 @@ export default function CustomCursor() {
       }
     };
 
-    const handleMouseLeave = () => { if (cursor) cursor.style.opacity = '0'; };
-    const handleMouseEnter = () => { if (cursor) cursor.style.opacity = '1'; };
+    const handleMouseLeave = () => { /* no-op */ };
+    const handleMouseEnter = () => { /* no-op */ };
     
     const handleMouseDown = () => { 
       if (cursor) cursor.classList.add('clicking');

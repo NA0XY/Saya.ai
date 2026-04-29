@@ -441,10 +441,5 @@ export const api = {
     return unwrapData(result);
   },
 
-  updatePatientNumber: (payload: { patientNumber: string }) =>
-    request<{ patientNumber: string; status: string }>("/user/patient-number", {
-      method: "PUT",
-      body: JSON.stringify(payload)
-    }),
 };
 

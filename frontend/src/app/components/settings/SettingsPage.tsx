@@ -3,11 +3,6 @@ import { Link } from "react-router-dom";
 import { GuardianContactHub } from "./GuardianContactHub";
 import { PatientNumberSettings } from "./PatientNumberSettings";
 import { GuardianCallerPanel } from "./GuardianCallerPanel";
-<<<<<<< HEAD
-import { SafetyDashboardPanel } from "./SafetyDashboardPanel";
-import { SystemStatusPanel } from "./SystemStatusPanel";
-=======
->>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 import {
   PhoneIcon,
   MobileIcon,
@@ -16,22 +11,12 @@ import {
 import { api } from "../../lib/api";
 import type { UserProfile } from "../../lib/api";
 
-<<<<<<< HEAD
-type Tab = "contacts" | "patient" | "medical" | "caller" | "soul" | "safety" | "status";
-=======
 type Tab = "contacts" | "patient" | "caller";
->>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 
 const PILLARS: { id: Tab; label: string; Icon: React.ComponentType }[] = [
   { id: "contacts", label: "Guardian Contacts", Icon: PhoneIcon },
   { id: "patient", label: "Patient Number", Icon: MobileIcon },
   { id: "caller", label: "Guardian Caller", Icon: CallerIcon },
-<<<<<<< HEAD
-  { id: "soul", label: "Companion Soul", Icon: SoulIcon },
-  { id: "safety", label: "Safety & Precaution", Icon: SafetyIcon },
-  { id: "status", label: "System Status", Icon: StatusIcon },
-=======
->>>>>>> e91be6bedd39b27dc85e971e32baf7d41d4e0975
 ];
 
 export function SettingsPage() {
@@ -105,8 +90,8 @@ export function SettingsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-3 px-4 py-3 transition-all whitespace-nowrap md:whitespace-normal w-full flex-shrink-0 md:flex-shrink-1 font-sketch text-[1rem] ${activeTab === tab.id
-                  ? "bg-white text-[#1A1A1A] sketch-box shadow-md font-bold"
-                  : "bg-transparent text-[#1A1A1A] hover:underline hover:decoration-wavy hover:decoration-[#E85D2A]"
+                    ? "bg-white text-[#1A1A1A] sketch-box shadow-md font-bold"
+                    : "bg-transparent text-[#1A1A1A] hover:underline hover:decoration-wavy hover:decoration-[#E85D2A]"
                   }`}
                 style={{
                   transform: `rotate(${idx % 2 === 0 ? -0.5 : 0.5}deg)`
