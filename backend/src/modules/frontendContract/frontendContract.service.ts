@@ -114,9 +114,12 @@ function buildFrontendCallbackUrl(params: { token?: string; onboardingComplete?:
   const baseUrl = env.FRONTEND_URL.replace(/\/$/, '');
   const url = new URL(`${baseUrl}/auth/callback`);
   const hashParams = new URLSearchParams();
+  // Always return a backend-controlled token when present
   if (params.token) hashParams.set('token', params.token);
-  if (params.onboardingComplete !== undefined) hashParams.set('onboarding', params.onboardingComplete ? '1' : '0');
-  if (params.returnTo) hashParams.set('returnTo', params.returnTo);
+  // Do not rely on the frontend onboarding redirect flag (some frontends still redirect to /onboarding).
+  // Instead, prefer an explicit returnTo. If none provided, default to dashboard to avoid landing on missing onboarding route.
+  const safeReturnTo = params.returnTo && params.returnTo.startsWith('/') ? params.returnTo : '/dashboard';
+  hashParams.set('returnTo', safeReturnTo);
   if (params.error) hashParams.set('error', params.error);
   url.hash = hashParams.toString();
   return url.toString();

@@ -13,6 +13,7 @@ import { api, type DashboardSummaryDto } from "../lib/api";
 export function DashboardPage() {
   const [selectedCallId, setSelectedCallId] = useState<string>("");
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { user } = useUser();
 
   const displayName = user?.name?.split(" ")[0] || "there";
@@ -25,6 +26,15 @@ export function DashboardPage() {
     } catch (error) {
       console.error("Failed to load dashboard summary", error);
       return null;
+    }
+  };
+
+  const refreshDashboard = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadSummary();
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -52,13 +62,34 @@ export function DashboardPage() {
       void loadSummary();
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadSummary();
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "dashboard:schedule-created") {
+        void loadSummary();
+        localStorage.removeItem("dashboard:schedule-created");
+      }
+    };
+
+    const handleScheduleCreated = () => {
+      void loadSummary();
+    };
+
     window.addEventListener("focus", handleFocus);
-    document.addEventListener("visibilitychange", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("dashboard:schedule-created", handleScheduleCreated);
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
-      document.removeEventListener("visibilitychange", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("dashboard:schedule-created", handleScheduleCreated);
     };
   }, []);
 
@@ -150,8 +181,49 @@ export function DashboardPage() {
             </p>
           </div>
           
-          {/* Animated sketching robot on the right */}
-          <SketchRobotAnimation />
+          {/* Refresh button and animated sketching robot on the right */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button
+              onClick={refreshDashboard}
+              disabled={isRefreshing}
+              style={{
+                background: "transparent",
+                border: "2px solid #1A1A1A",
+                borderRadius: "6px",
+                padding: "8px 12px",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
+                opacity: isRefreshing ? 0.6 : 1,
+                transition: "all 0.2s",
+              }}
+              aria-label="Refresh dashboard"
+              title="Refresh dashboard data"
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  animation: isRefreshing ? "spin 1s linear infinite" : "none",
+                  color: "#1A1A1A",
+                }}
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36" />
+              </svg>
+            </button>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <SketchRobotAnimation />
+          </div>
         </div>
 
 
@@ -166,7 +238,7 @@ export function DashboardPage() {
             overflow: "hidden",
           }}
         >
-          <MoodWidget />
+          <MoodWidget mood={summary?.lastMood} />
           <CallsRemainingWidget count={upcomingCount} />
           <CallsMissedWidget count={missedCount} />
         </div>

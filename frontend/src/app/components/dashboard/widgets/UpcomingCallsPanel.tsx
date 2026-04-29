@@ -11,6 +11,13 @@ interface UpcomingCall {
 }
 
 function formatScheduledTime(value: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (match) {
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const local = new Date(2000, 0, 1, hours, minutes, 0, 0);
+    return local.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  }
   const date = new Date(value);
   if (!Number.isNaN(date.getTime())) {
     return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
@@ -30,7 +37,9 @@ export function UpcomingCallsPanel({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
 
-  const upcomingCalls: UpcomingCall[] = calls.map((call) => ({
+  const upcomingCalls: UpcomingCall[] = [...calls]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .map((call) => ({
     id: call.id,
     time: formatScheduledTime(call.scheduled_time),
     medicine: call.medicine_name,

@@ -148,11 +148,14 @@ export type CallLogDto = {
   created_at: string;
 };
 
+export type MoodState = 'happy' | 'neutral' | 'concerned';
+
 export type DashboardSummaryDto = {
   patients: Array<{ id: string; full_name: string; phone: string; created_at: string; updated_at: string }>;
   recentAlerts: AlertDto[];
   activeSchedules: MedicationScheduleDto[];
   recentCallLogs: CallLogDto[];
+  lastMood?: MoodState | null;
 };
 
 type ApiEnvelope<T> = {
@@ -277,7 +280,7 @@ export const api = {
   },
 
   dashboardSummary: async () => {
-    const result = await request<DashboardSummaryDto | ApiEnvelope<DashboardSummaryDto>>("/dashboard");
+    const result = await request<DashboardSummaryDto | ApiEnvelope<DashboardSummaryDto>>("/dashboard", { cache: "no-store" });
     return unwrapData(result);
   },
 
@@ -296,6 +299,11 @@ export const api = {
     request<{ id: string; status: string }>("/medications/schedule", {
       method: "POST",
       body: JSON.stringify(payload)
+    }),
+
+  deleteSchedule: (scheduleId: string) =>
+    request<{ id: string }>(`/medications/${scheduleId}`, {
+      method: "DELETE"
     }),
 
   companionChat: async (payload: { patient_id: string; message: string; language: "hi" | "en" }) => {
@@ -433,10 +441,5 @@ export const api = {
     return unwrapData(result);
   },
 
-  updatePatientNumber: (payload: { patientNumber: string }) =>
-    request<{ patientNumber: string; status: string }>("/user/patient-number", {
-      method: "PUT",
-      body: JSON.stringify(payload)
-    }),
 };
 

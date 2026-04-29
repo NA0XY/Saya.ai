@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
+import { api } from "../../lib/api";
 
 const DRUG_BRANDS = [
   "Dolo-650", "Telma-AM 40", "Crocin Advance", "Ecosprin-75",
@@ -12,6 +13,9 @@ type ScheduledEntry = {
   medicine: string;
   voice: string;
   time: string;
+  backendId?: string;
+  isLoading?: boolean;
+  error?: string;
 };
 
 export function GuardianCallerPanel() {
@@ -22,10 +26,12 @@ export function GuardianCallerPanel() {
   const [time, setTime] = useState("");
   const [voice, setVoice] = useState("");
   const [showDrop, setShowDrop] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
   /* Stage 2 entries */
   const [entries, setEntries] = useState<ScheduledEntry[]>([]);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -47,21 +53,90 @@ export function GuardianCallerPanel() {
     return `${hr}:${mn}`;
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!medicine.trim() || !time) return;
-    setEntries(prev => [...prev, {
-      id: Date.now().toString(),
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    const tempId = Date.now().toString();
+    const newEntry: ScheduledEntry = {
+      id: tempId,
       medicine: medicine.trim(),
       voice: voice.trim(),
       time,
-    }]);
-    setMedicine("");
-    setVoice("");
-    setTime("");
-    setStage(2);
+      isLoading: true,
+    };
+
+    setEntries(prev => [...prev, newEntry]);
+
+    try {
+      const result = await api.scheduleMedication({
+        drugName: medicine.trim(),
+        time,
+        customMessage: voice.trim() || undefined,
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+      });
+
+      // Update the entry with the backend ID
+      setEntries(prev => prev.map(e => 
+        e.id === tempId 
+          ? { ...e, backendId: result.id, isLoading: false, error: undefined }
+          : e
+      ));
+
+      setMessage({ type: "success", text: `${medicine.trim()} scheduled for ${time}` });
+      setMedicine("");
+      setVoice("");
+      setTime("");
+      setStage(2);
+
+      // Notify Dashboard to refresh immediately
+      localStorage.setItem("dashboard:schedule-created", Date.now().toString());
+      window.dispatchEvent(new Event("dashboard:schedule-created"));
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Failed to schedule call";
+      setMessage({ type: "error", text: errorMsg });
+      
+      // Remove the failed entry
+      setEntries(prev => prev.filter(e => e.id !== tempId));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAdd = () => setStage(1);
+
+  const handleDelete = async (entry: ScheduledEntry) => {
+    if (!entry.backendId) {
+      // Local entry only, just remove it
+      const next = entries.filter(e => e.id !== entry.id);
+      setEntries(next);
+      if (next.length === 0) setStage(1);
+      return;
+    }
+
+    // Update UI to show loading
+    setEntries(prev => prev.map(e => 
+      e.id === entry.id ? { ...e, isLoading: true } : e
+    ));
+
+    try {
+      await api.deleteSchedule(entry.backendId);
+      const next = entries.filter(e => e.id !== entry.id);
+      setEntries(next);
+      if (next.length === 0) setStage(1);
+      setMessage({ type: "success", text: `${entry.medicine} removed` });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Failed to delete schedule";
+      setMessage({ type: "error", text: errorMsg });
+      
+      // Revert the loading state
+      setEntries(prev => prev.map(e => 
+        e.id === entry.id ? { ...e, isLoading: false, error: errorMsg } : e
+      ));
+    }
+  };
 
   /* ── expand / collapse icon ── */
   const ExpandIcon = () => (
@@ -81,7 +156,7 @@ export function GuardianCallerPanel() {
       {/* ═══ STAGE 1 — Schedule a Reminder ═══ */}
       {stage === 1 && (
         <div
-          className="bg-[#F5F1EA] p-8 max-w-2xl mx-auto"
+          className="bg-[#F6F4EB] p-8 max-w-2xl mx-auto"
           style={{
             border: "3px solid #1a1a1a",
             borderRadius: "6px",
@@ -94,12 +169,12 @@ export function GuardianCallerPanel() {
               <h3 className="font-sketch font-bold text-2xl text-[#1a1a1a] italic uppercase tracking-wide">
                 Schedule a Reminder
               </h3>
-              <p className="font-sketch text-sm text-[#83311A]/60 mt-0.5">
+              <p className="font-sketch text-sm text-[#1A1A1A]/60 mt-0.5">
                 Set medicine time &amp; voice message
               </p>
             </div>
             {entries.length > 0 && (
-              <button onClick={() => setStage(2)} className="text-[#1a1a1a] hover:text-[#D94F2B] transition-colors mt-1" aria-label="View upcoming calls">
+              <button onClick={() => setStage(2)} className="text-[#1a1a1a] hover:text-[#1A1A1A] transition-colors mt-1" aria-label="View upcoming calls">
                 <ExpandIcon />
               </button>
             )}
@@ -112,7 +187,7 @@ export function GuardianCallerPanel() {
                 Medicine Name
               </label>
               <div
-                className="bg-[#F5F1EA]"
+                className="bg-[#F6F4EB]"
                 style={{ border: "1.5px solid #c5bfb3", borderRadius: "4px", filter: "url(#rough)" }}
               >
                 <input
@@ -121,7 +196,7 @@ export function GuardianCallerPanel() {
                   onChange={e => { setMedicine(e.target.value); setShowDrop(true); }}
                   onFocus={() => setShowDrop(true)}
                   placeholder="e.g. Metoprolol 25mg"
-                  className="w-full px-4 py-3 bg-transparent focus:outline-none font-sketch text-base text-[#1a1a1a] placeholder-[#83311A]/40"
+                  className="w-full px-4 py-3 bg-transparent focus:outline-none font-sketch text-base text-[#1a1a1a] placeholder-[#1A1A1A]/40"
                 />
               </div>
               {showDrop && medicine && filtered.length > 0 && (
@@ -131,7 +206,7 @@ export function GuardianCallerPanel() {
                 >
                   {filtered.map(d => (
                     <button key={d} onMouseDown={() => { setMedicine(d); setShowDrop(false); }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#D94F2B]/5 font-sketch text-base text-[#1a1a1a] transition-colors">
+                      className="w-full text-left px-4 py-2 hover:bg-[#1A1A1A]/5 font-sketch text-base text-[#1a1a1a] transition-colors">
                       {d}
                     </button>
                   ))}
@@ -145,7 +220,7 @@ export function GuardianCallerPanel() {
                 Call Time
               </label>
               <div
-                className="bg-[#F5F1EA] flex items-center"
+                className="bg-[#F6F4EB] flex items-center"
                 style={{ border: "1.5px solid #c5bfb3", borderRadius: "4px", filter: "url(#rough)" }}
               >
                 <input
@@ -156,7 +231,7 @@ export function GuardianCallerPanel() {
                   className="flex-1 px-4 py-3 bg-transparent focus:outline-none font-sketch text-base text-[#1a1a1a]"
                   style={{ colorScheme: "light" }}
                 />
-                <div className="pr-3 text-[#83311A]/40">
+                <div className="pr-3 text-[#1A1A1A]/40">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                   </svg>
@@ -170,7 +245,7 @@ export function GuardianCallerPanel() {
                 Voice Message (optional)
               </label>
               <div
-                className="bg-[#F5F1EA]"
+                className="bg-[#F6F4EB]"
                 style={{ border: "1.5px solid #c5bfb3", borderRadius: "4px", filter: "url(#rough)" }}
               >
                 <textarea
@@ -178,7 +253,7 @@ export function GuardianCallerPanel() {
                   value={voice}
                   onChange={e => setVoice(e.target.value)}
                   placeholder="e.g. Namaste Papa, apni goli le lijiye..."
-                  className="w-full px-4 py-3 bg-transparent focus:outline-none font-sketch text-base text-[#1a1a1a] placeholder-[#83311A]/40 resize-y"
+                  className="w-full px-4 py-3 bg-transparent focus:outline-none font-sketch text-base text-[#1a1a1a] placeholder-[#1A1A1A]/40 resize-y"
                 />
               </div>
             </div>
@@ -186,21 +261,23 @@ export function GuardianCallerPanel() {
             {/* Schedule Call */}
             <button
               onClick={handleSchedule}
-              disabled={!medicine.trim() || !time}
+              disabled={!medicine.trim() || !time || isSubmitting}
               className="w-full py-4 font-sketch font-bold text-xl tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all"
               style={{
-                background: "#D94F2B",
+                background: "#1A1A1A",
                 color: "#fff",
-                border: "2px solid #83311A",
+                border: "2px solid #1A1A1A",
                 borderRadius: "6px",
                 filter: "url(#rough)",
               }}
             >
               <span className="flex items-center justify-center gap-2">
-                Schedule Call
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
+                {isSubmitting ? "Scheduling..." : "Schedule Call"}
+                {!isSubmitting && (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                )}
               </span>
             </button>
           </div>
@@ -210,24 +287,38 @@ export function GuardianCallerPanel() {
       {/* ═══ STAGE 2 — Upcoming Calls ═══ */}
       {stage === 2 && (
         <div
-          className="bg-[#F5F1EA] p-8 max-w-2xl mx-auto"
+          className="bg-[#F6F4EB] p-8 max-w-2xl mx-auto"
           style={{
             border: "3px solid #1a1a1a",
             borderRadius: "6px",
             filter: "url(#rough)",
           }}
         >
+          {/* Message notification */}
+          {message && (
+            <div
+              className={`mb-6 px-4 py-3 rounded font-sketch text-sm font-bold ${
+                message.type === "success"
+                  ? "bg-green-100 text-green-800 border border-green-300"
+                  : "bg-red-100 text-red-800 border border-red-300"
+              }`}
+              style={{ borderRadius: "4px", filter: "url(#rough)" }}
+            >
+              {message.text}
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-start justify-between mb-1">
             <div>
               <h3 className="font-sketch font-bold text-2xl text-[#1a1a1a] italic uppercase tracking-wide">
                 Upcoming Calls
               </h3>
-              <p className="font-sketch text-sm text-[#83311A]/60 mt-0.5">
+              <p className="font-sketch text-sm text-[#1A1A1A]/60 mt-0.5">
                 Today &middot; ordered by schedule
               </p>
             </div>
-            <button onClick={handleAdd} className="text-[#1a1a1a] hover:text-[#D94F2B] transition-colors mt-1" aria-label="Schedule new reminder">
+            <button onClick={handleAdd} className="text-[#1a1a1a] hover:text-[#1A1A1A] transition-colors mt-1" aria-label="Schedule new reminder">
               <CollapseIcon />
             </button>
           </div>
@@ -244,8 +335,8 @@ export function GuardianCallerPanel() {
                     className={`flex items-start gap-6 py-4 group ${
                       isFirst
                         ? "rounded-md px-4"
-                        : "border-b border-[#83311A]/10"
-                    }`}
+                        : "border-b border-[#1A1A1A]/10"
+                    } ${entry.isLoading ? "opacity-50" : ""}`}
                     style={isFirst ? {
                       background: "rgba(217, 79, 43, 0.08)",
                       border: "1.5px solid rgba(217, 79, 43, 0.2)",
@@ -266,7 +357,7 @@ export function GuardianCallerPanel() {
                         {entry.medicine}
                       </p>
                       {entry.voice && (
-                        <p className="font-sketch text-sm text-[#83311A]/50 mt-0.5 italic">
+                        <p className="font-sketch text-sm text-[#1A1A1A]/50 mt-0.5 italic">
                           {entry.voice}
                         </p>
                       )}
@@ -274,12 +365,9 @@ export function GuardianCallerPanel() {
 
                     {/* Delete on hover */}
                     <button
-                      onClick={() => {
-                        const next = entries.filter(e => e.id !== entry.id);
-                        setEntries(next);
-                        if (next.length === 0) setStage(1);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 flex-shrink-0 mt-1"
+                      onClick={() => handleDelete(entry)}
+                      disabled={entry.isLoading}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 flex-shrink-0 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label={`Delete ${entry.medicine}`}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -295,7 +383,7 @@ export function GuardianCallerPanel() {
           <div className="flex justify-center mt-5">
             <button
               onClick={handleAdd}
-              className="w-12 h-12 flex items-center justify-center text-[#1a1a1a] hover:text-[#D94F2B] hover:scale-110 transition-all"
+              className="w-12 h-12 flex items-center justify-center text-[#1a1a1a] hover:text-[#1A1A1A] hover:scale-110 transition-all"
               style={{ border: "2px solid #1a1a1a", borderRadius: "4px", filter: "url(#rough)" }}
               aria-label="Add another reminder"
             >

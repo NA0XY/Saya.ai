@@ -1,4 +1,4 @@
-type Props = {
+﻿type Props = {
   onOpenSettings: () => void;
   onDismiss: () => void;
 };
@@ -6,7 +6,7 @@ type Props = {
 export function SetupGuideBanner({ onOpenSettings, onDismiss }: Props) {
   return (
     <div className="dashboard-card-wrapper mb-8 animate-fade-in">
-      <div className="relative bg-gradient-to-r from-[#E85D2A] to-[#ff8a5c] rounded-2xl p-6 shadow-lg overflow-hidden">
+      <div className="relative bg-gradient-to-r from-[#1A1A1A] to-[#ff8a5c] rounded-2xl p-6 shadow-lg overflow-hidden">
         {/* Decorative pattern */}
         <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fff 1.5px, transparent 1.5px)", backgroundSize: "20px 20px" }} />
 
@@ -25,7 +25,7 @@ export function SetupGuideBanner({ onOpenSettings, onDismiss }: Props) {
           <div className="flex items-center gap-3 flex-shrink-0">
             <button
               onClick={onOpenSettings}
-              className="px-6 py-2.5 bg-white text-[#E85D2A] rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-white/90 transition-all shadow-md transform hover:-translate-y-0.5"
+              className="px-6 py-2.5 bg-white text-[#1A1A1A] rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-white/90 transition-all shadow-md transform hover:-translate-y-0.5"
             >
               Open Settings
             </button>

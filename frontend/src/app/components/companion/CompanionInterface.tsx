@@ -771,11 +771,11 @@ export function CompanionInterface() {
         prev.map((message) =>
           message.id === assistantMessageId
             ? {
-                ...message,
-                content: finalReply,
-                sentiment: result.sentiment,
-                timestamp: new Date(),
-              }
+              ...message,
+              content: finalReply,
+              sentiment: result.sentiment,
+              timestamp: new Date(),
+            }
             : message
         )
       );
@@ -842,7 +842,7 @@ export function CompanionInterface() {
           return;
         }
       } catch {
-          // Keep silent here; auth flow will surface its own error states.
+        // Keep silent here; auth flow will surface its own error states.
       }
       setLoadingHistory(false);
       setLoadingMemories(false);
@@ -949,20 +949,20 @@ export function CompanionInterface() {
 
       const selected = VOICE_PIPELINE_V2_ENABLED
         ? pickFinalTranscript(
-            browserTranscript,
-            { transcript: serverTranscript, qualityScore: serverQualityScore },
-            listenDurationMs,
-            audioBytes
-          )
+          browserTranscript,
+          { transcript: serverTranscript, qualityScore: serverQualityScore },
+          listenDurationMs,
+          audioBytes
+        )
         : (() => {
-            const fallbackTranscript = normalizeTranscriptText(serverTranscript || browserTranscript);
-            if (!fallbackTranscript) return null;
-            return {
-              transcript: fallbackTranscript,
-              source: serverTranscript ? "server" : "browser",
-              qualityScore: 1
-            } as TranscriptCandidate;
-          })();
+          const fallbackTranscript = normalizeTranscriptText(serverTranscript || browserTranscript);
+          if (!fallbackTranscript) return null;
+          return {
+            transcript: fallbackTranscript,
+            source: serverTranscript ? "server" : "browser",
+            qualityScore: 1
+          } as TranscriptCandidate;
+        })();
 
       const relaxedFallback = pickRelaxedFallbackTranscript(
         browserTranscript,
@@ -974,16 +974,16 @@ export function CompanionInterface() {
       const browserWordCount = countWords(browserTranscript);
       const permissiveBrowserFallback =
         browserTranscript &&
-        !serverTranscript &&
-        (
-          browserWordCount >= 2 ||
-          (browserWordCount === 1 && listenDurationMs <= 2500)
-        )
+          !serverTranscript &&
+          (
+            browserWordCount >= 2 ||
+            (browserWordCount === 1 && listenDurationMs <= 2500)
+          )
           ? ({
-              transcript: browserTranscript,
-              source: "browser",
-              qualityScore: Math.max(0.3, transcriptQualityScore(browserTranscript, listenDurationMs, audioBytes)),
-            } as TranscriptCandidate)
+            transcript: browserTranscript,
+            source: "browser",
+            qualityScore: Math.max(0.3, transcriptQualityScore(browserTranscript, listenDurationMs, audioBytes)),
+          } as TranscriptCandidate)
           : null;
 
       const finalSelected =
@@ -1427,9 +1427,8 @@ export function CompanionInterface() {
       </div>
 
       <div
-        className={`fixed z-40 top-0 right-0 h-full w-full sm:w-[92%] lg:w-[460px] bg-white border-l border-[#E85D2A]/20 shadow-xl transition-all duration-300 ${
-          showNewsPanel ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed z-40 top-0 right-0 h-full w-full sm:w-[92%] lg:w-[460px] bg-white border-l border-[#E85D2A]/20 shadow-xl transition-all duration-300 ${showNewsPanel ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="h-full flex flex-col">
           <div className="flex items-center justify-between px-6 py-5 border-b border-[#E85D2A]/15">
@@ -1479,9 +1478,8 @@ export function CompanionInterface() {
       </div>
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-full sm:w-[92%] lg:w-[430px] bg-white border-r border-[#E85D2A]/20 shadow-xl transition-all duration-300 ${
-          settingsOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 w-full sm:w-[92%] lg:w-[430px] bg-white border-r border-[#E85D2A]/20 shadow-xl transition-all duration-300 ${settingsOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="h-full overflow-y-auto px-6 py-6">
           <div className="flex items-center justify-between">
