@@ -6,7 +6,6 @@ import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
 import {
   api,
-  type CompanionHistoryMessage,
   type CompanionChatResponse,
   type CompanionStreamEvent,
   type NewsItem,
@@ -80,19 +79,6 @@ function buildPersonalisedGreeting(memories: PatientMemory[]): string {
   }
 
   return "Namaste. How are you feeling today?";
-}
-
-function normalizeHistoryMessage(message: CompanionHistoryMessage): ChatMessage {
-  return {
-    id: message.id,
-    role: message.role,
-    content:
-      message.role === "assistant"
-        ? stripControlTags(message.content)
-        : message.content,
-    sentiment: (message.sentiment ?? undefined) as SentimentTag | undefined,
-    timestamp: new Date(message.created_at),
-  };
 }
 
 function countWords(value: string): number {
@@ -653,17 +639,11 @@ export function CompanionInterface() {
     }
   };
 
-  const loadHistory = async (currentPatientId: string) => {
-    setLoadingHistory(true);
-    try {
-      const data = await api.getCompanionHistory(currentPatientId);
-      setMessages(data.map(normalizeHistoryMessage));
-      setHistoryError(null);
-    } catch (error) {
-      setHistoryError(error instanceof Error ? error.message : "Failed to load conversation history");
-    } finally {
-      setLoadingHistory(false);
-    }
+  const loadHistory = async (_currentPatientId: string) => {
+    // Start fresh on every page load; do not hydrate prior chat history.
+    setMessages([]);
+    setHistoryError(null);
+    setLoadingHistory(false);
   };
 
   const loadPreferences = async (currentPatientId: string) => {
