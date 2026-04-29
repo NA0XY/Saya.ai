@@ -4,6 +4,7 @@ import { authRouter } from './auth.routes';
 import { callRouter } from './call.routes';
 import { companionRouter } from './companion.routes';
 import { dashboardRouter } from './dashboard.routes';
+import { exampleRouter } from './example.routes';
 import { medicationRouter } from './medication.routes';
 import { onboardingRouter } from './onboarding.routes';
 import { prescriptionRouter } from './prescription.routes';
@@ -23,3 +24,4 @@ router.get('/safety/:prescriptionId/warnings', authMiddleware, validateParams(Sa
 router.use('/companion', companionRouter);
 router.use('/calls', callRouter);
 router.use('/dashboard', dashboardRouter);
+router.use('/example', exampleRouter);

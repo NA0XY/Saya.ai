@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { Settings, X } from "lucide-react";
 import { DottedBackground } from "../DottedBackground";
+import { CommonSidebarLayout } from "../layout/CommonSidebarLayout";
 import { CompanionAvatar } from "./CompanionAvatar";
 import { VoiceButton } from "./VoiceButton";
 import {
@@ -1209,7 +1209,7 @@ export function CompanionInterface() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F1EA] relative overflow-hidden flex flex-col">
+    <CommonSidebarLayout pageClassName="min-h-screen bg-[#F5F1EA] relative overflow-hidden flex flex-col" contentClassName="min-h-screen relative">
       <DottedBackground />
       {escalationBannerVisible && (
         <div className="relative z-30 mx-4 mt-4 bg-[#FFF3CD] border border-[#FFD700] rounded-xl px-6 py-3 text-sm font-semibold text-[#7D6608] flex items-center gap-3 transition-all duration-300">
@@ -1229,10 +1229,7 @@ export function CompanionInterface() {
         </div>
       )}
 
-      <div className="absolute top-8 left-8 md:top-12 md:left-12 z-20 flex flex-col items-start gap-4">
-        <Link to="/" className="text-2xl md:text-3xl font-bold tracking-widest text-[#2A2B3D]">
-          SAYA.AI
-        </Link>
+      <div className="absolute top-6 right-6 md:top-8 md:right-10 z-20 flex items-center">
         <button
           type="button"
           aria-label="Open companion settings"
@@ -1461,7 +1458,7 @@ export function CompanionInterface() {
         className={`fixed inset-y-0 left-0 z-40 w-full sm:w-[92%] lg:w-[430px] bg-white border-r border-[#E85D2A]/20 shadow-xl transition-all duration-300 ${settingsOpen ? "translate-x-0" : "-translate-x-full"
           }`}
       >
-        <div className="h-full overflow-y-auto px-6 py-6">
+        <div className="h-full overflow-y-auto px-6 py-6">left-64 lg:
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold tracking-tight uppercase text-[#2A2B3D]">Companion Settings</h3>
             <button
@@ -1545,7 +1542,6 @@ export function CompanionInterface() {
           </div>
         </div>
       </div>
-    </div>
+    </CommonSidebarLayout>
   );
 }
-

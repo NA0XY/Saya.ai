@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SidebarNav } from "./dashboard/SidebarNav";
+import { CommonSidebarLayout } from "./layout/CommonSidebarLayout";
 import { MoodWidget }              from "./dashboard/widgets/MoodWidget";
 import { CallsRemainingWidget }    from "./dashboard/widgets/CallsRemainingWidget";
 import { CallsMissedWidget }       from "./dashboard/widgets/CallsMissedWidget";
@@ -111,18 +111,14 @@ export function DashboardPage() {
   }, [activeSchedules, selectedCallId]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
+    <CommonSidebarLayout
+      pageClassName="min-h-screen overflow-hidden"
+      pageStyle={{
         background: "#F6F4EB",
         fontFamily: "'Caveat', cursive",
       }}
+      contentClassName="h-screen"
     >
-      {/* ── Sidebar (256px fixed) */}
-      <SidebarNav />
-
       {/*
        * CSS Grid — 5 rows:
        *   auto  → top bar
@@ -133,8 +129,7 @@ export function DashboardPage() {
        */}
       <div
         style={{
-          marginLeft: "256px",
-          width: "calc(100vw - 256px)",
+          width: "100%",
           height: "100vh",
           overflow: "hidden",
           display: "grid",
@@ -274,6 +269,6 @@ export function DashboardPage() {
         </div>
 
       </div>
-    </div>
+    </CommonSidebarLayout>
   );
 }

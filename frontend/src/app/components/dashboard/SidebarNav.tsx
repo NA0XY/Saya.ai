@@ -78,9 +78,16 @@ export function SidebarNav() {
           border: 2px solid #1A1A1A;
           box-shadow: 2px 2px 0px rgba(26,26,26,0.15);
         }
+
+        @media (max-width: 1023px) {
+          .sketch-sidebar {
+            display: none !important;
+          }
+        }
       `}</style>
 
       <aside
+        className="sketch-sidebar"
         style={{
           position: "fixed",
           top: 0,

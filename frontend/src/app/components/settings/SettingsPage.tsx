@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { GuardianContactHub } from "./GuardianContactHub";
+import { CommonSidebarLayout } from "../layout/CommonSidebarLayout";
 import { PatientNumberSettings } from "./PatientNumberSettings";
 import { GuardianCallerPanel } from "./GuardianCallerPanel";
 import {
@@ -52,26 +52,21 @@ export function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F6F4EB] flex items-center justify-center">
+      <CommonSidebarLayout pageClassName="min-h-screen bg-[#F6F4EB]" contentClassName="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[#1A1A1A]/20 border-t-[#1A1A1A] rounded-full animate-spin" />
           <p className="text-[#1A1A1A] font-bold tracking-widest uppercase font-sketch">Loading Configuration...</p>
         </div>
-      </div>
+      </CommonSidebarLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F4EB] flex flex-col font-sans">
+    <CommonSidebarLayout pageClassName="min-h-screen bg-[#F6F4EB]" contentClassName="min-h-screen flex flex-col font-sans">
       {/* Global Header */}
       <header className="bg-transparent sticky top-0 z-50 flex-shrink-0">
-        <div className="w-full px-0 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/dashboard" className="w-8 h-8 sketch-box flex items-center justify-center text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-all transform hover:-translate-y-0.5" aria-label="Back to Dashboard">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            </Link>
-            <h1 className="text-xl font-sketch font-bold text-[#1A1A1A] relative -top-1.5">SAYA.AI SETTINGS</h1>
-          </div>
+        <div className="w-full px-4 md:px-6 h-16 flex items-center justify-between">
+          <h1 className="text-xl font-sketch font-bold text-[#1A1A1A] relative -top-1.5">SAYA.AI SETTINGS</h1>
           <div className="w-10 h-10 bg-[#F6F4EB] sketch-box text-[#1A1A1A] flex items-center justify-center text-lg">
             ⚙️
           </div>
@@ -119,7 +114,7 @@ export function SettingsPage() {
       </div>
 
       {/* Persistent Footer */}
-      <footer className="bg-transparent py-5 flex-shrink-0 mt-auto fixed bottom-0 left-0 right-0 z-50">
+      <footer className="bg-transparent py-5 flex-shrink-0 mt-auto fixed bottom-0 left-0 right-0 z-50 lg:pl-64">
         <div className="w-full px-4 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-2">
           <p className="text-[10px] text-[#1A1A1A]/60 font-sketch uppercase tracking-widest">
             Your data is secure and globally encrypted.
@@ -129,6 +124,6 @@ export function SettingsPage() {
           </p>
         </div>
       </footer>
-    </div>
+    </CommonSidebarLayout>
   );
 }

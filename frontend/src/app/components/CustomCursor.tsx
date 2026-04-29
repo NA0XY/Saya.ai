@@ -53,8 +53,8 @@ export default function CustomCursor() {
         const timeSinceLastMove = Date.now() - lastMouseTimeRef.current;
         
         // Emotion state machine
-        if (textEmotionRef.current && distance < 20) {
-          updateEmotion(textEmotionRef.current); // Text context overrides if not whipping mouse
+        if (textEmotionRef.current) {
+          updateEmotion(textEmotionRef.current); // Text context immediately overrides
         } else if (isHoveringRef.current) {
           updateEmotion('playful');
         } else if (timeSinceLastMove > 4000) {
@@ -96,24 +96,24 @@ export default function CustomCursor() {
         positionRef.current.y = e.clientY;
       }
 
-      // Continual text analysis (throttled to 100ms)
+      // Continual text analysis (throttled to 50ms for better responsiveness)
       const now = Date.now();
-      if (now - lastAnalysisTime > 100) {
+      if (now - lastAnalysisTime > 50) {
         lastAnalysisTime = now;
         let target = e.target as HTMLElement;
         if (target && target.nodeType === Node.TEXT_NODE && target.parentElement) {
           target = target.parentElement;
         }
 
-        const validTextTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'button', 'li', 'strong', 'em', 'label', 'div'];
+        const validTextTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a', 'button', 'li', 'strong', 'em', 'label', 'div', 'td', 'th', 'nav', 'header'];
         
         if (target && validTextTags.includes(target.tagName?.toLowerCase())) {
           const text = target.innerText?.toLowerCase() || target.textContent?.toLowerCase() || '';
           
-          if (text.length > 0 && text.length < 500) {
-            const sadKeywords = ['sad', 'bad', 'error', 'warning', 'fail', 'wrong', 'difficult', 'lonely', 'sorry', 'miss', 'missed', 'pain', 'hurt', 'avoid', '⚠️'];
-            const happyKeywords = ['happy', 'joy', 'great', 'excellent', 'good', 'love', 'awesome', 'perfect', 'success', 'yay', 'smile', '😊', '🎉', 'welcome', 'upcoming', 'scheduled', 'completed', 'upcoming calls'];
-            const seriousKeywords = ['important', 'security', 'privacy', 'settings', 'danger', 'alert', 'caution', 'medical', 'doctor', 'prescription', 'drug', 'precautions', '🛡️', '💊'];
+          if (text.length > 0 && text.length < 800) {
+            const sadKeywords = ['sad', 'bad', 'error', 'warning', 'fail', 'wrong', 'difficult', 'lonely', 'sorry', 'miss', 'missed', 'pain', 'hurt', 'avoid', '⚠️', 'issue', 'problem', 'critical', 'logout', 'exit', 'delete', 'remove', 'danger', 'inactive'];
+            const happyKeywords = ['happy', 'joy', 'great', 'excellent', 'good', 'love', 'awesome', 'perfect', 'success', 'yay', 'smile', '😊', '🎉', 'welcome', 'upcoming', 'scheduled', 'completed', 'verify', 'verified', 'safe', 'secure', 'protect', 'save', 'submit', 'connect', 'active'];
+            const seriousKeywords = ['important', 'security', 'privacy', 'settings', 'alert', 'caution', 'medical', 'doctor', 'prescription', 'drug', 'precautions', '🛡️', '💊', 'health', 'condition', 'treatment', 'patient', 'guardian', 'call', 'caller', 'panel', 'record', 'status', 'info', 'dashboard', 'analytics'];
 
             if (happyKeywords.some(kw => text.includes(kw))) {
               textEmotionRef.current = 'happy-normal';

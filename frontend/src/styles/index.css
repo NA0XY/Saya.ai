@@ -292,3 +292,34 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Custom Cursor ===== */
+@media (hover: hover) and (pointer: fine) {
+  body, a, button, input, textarea, select {
+    cursor: none !important;
+  }
+}
+
+#custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 73px;
+  height: 73px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 999999;
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform, left, top;
+}
+
+#custom-cursor.hovering {
+  transform: translate(-50%, -50%) scale(1.25);
+}
+
+#custom-cursor.clicking {
+  transform: translate(-50%, -50%) scale(0.9);
+}
