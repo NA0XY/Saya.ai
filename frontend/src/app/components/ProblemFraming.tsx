@@ -14,15 +14,15 @@ export function ProblemFraming() {
             <div className="section-heading">
               <h2>The Problem: Elder care fails on two deeply human levels</h2>
             </div>
-            <div className="options_wrapper" style={{ flexDirection: 'column', gap: '2rem' }}>
-              <p className="text-size-medium" style={{ textAlign: 'center', maxWidth: '800px', margin: '0 auto' }}>
+            <div className="options_wrapper problem-columns">
+              <p className="text-size-medium problem-copy">
                 Medical safety and emotional isolation. Families worry constantly — did my father take his medication? Is he eating the right foods? Is anyone talking to him today?
               </p>
-              <p className="text-size-medium" style={{ textAlign: 'center', maxWidth: '800px', margin: '0 auto' }}>
+              <p className="text-size-medium problem-copy">
                 Existing solutions are either cold, clinical pill-reminder apps that elderly users ignore, or generic chatbots with no memory, no medical context, and no real connection. And critically — almost none of them are built for India.
               </p>
             </div>
-            <div className="text-align-center text-size-medium text-style-allcaps max-width-medium align-center" style={{ marginTop: '2rem' }}>
+            <div className="text-align-center text-size-medium text-style-allcaps max-width-medium align-center problem-quote">
               Saya.ai was built because the gap between "alive" and "truly cared for" deserves a real Indian answer.
             </div>
           </div>

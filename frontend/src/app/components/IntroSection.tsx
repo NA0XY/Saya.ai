@@ -36,7 +36,6 @@ export function IntroSection() {
                 </video>
               </div>
             </div>
-            <div className="kicker">Introducing</div>
             <img src="/koi-assets/saya-logo.svg" loading="lazy" alt="Saya logo" className="platform_logo" />
             <h2 className="tilted-heading text-color-alternate">
               The 3 Core Pillars<br/>of Saya.ai

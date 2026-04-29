@@ -34,6 +34,11 @@ type ChatContext = {
   system: string;
 };
 
+function shouldIncludeNewsContext(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return /(^|\b)(news|headline|headlines|current affairs|latest update|latest updates|what(?:'| i)?s happening)(\b|$)/i.test(normalized);
+}
+
 function clampText(value: string, maxChars: number): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxChars) return normalized;
@@ -153,11 +158,12 @@ async function prepareChatContext(request: ChatRequest, caregiverId: string): Pr
   const patient = await patientRepository.findById(request.patient_id);
   if (!patient) throw ApiError.notFound('Patient');
 
-  const [memories, recentNews, history, contacts] = await Promise.all([
+  const includeNewsContext = shouldIncludeNewsContext(request.message);
+  const [memories, history, contacts, recentNews] = await Promise.all([
     memoryService.getMemories(patient.id),
-    newsService.getLatestNews(5),
     companionService.getHistory(patient.id, 20),
-    patientRepository.findEscalationContacts(patient.id)
+    patientRepository.findEscalationContacts(patient.id),
+    includeNewsContext ? newsService.getLatestNews(5) : Promise.resolve([])
   ]);
 
   const semanticMatches = await memoryService.semanticSearch(patient.id, request.message, 6).catch(() => []);
